@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registros por Número de Serie</title>
+    <link rel="stylesheet" href="css/numero_serie_admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <header class="app-header">
+        <h1>Fase Registro</h1>
+        <h2>Selección de Lote Existente</h2>
+        <div class="top-right">
+            <img src="/img/usuario.webp" alt="Usuario" class="user-icon">
+            <div class="username" id="username-display">Usuario</div>
+            <img src="/img/logout.png" alt="Cerrar sesión" class="logout-icon" id="logout-icon">
+        </div>
+    </header>
+    
+    <div class="app-container">
+        <div class="form-section">
+            <h1>Buscar por número de serie</h1>
+            
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Ingrese el NS a buscar...">
+                <button class="btn-search" id="search-btn">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
+        </div>
+        
+        <div class="table-section">
+            <h1>Historial de Registros</h1>
+            
+            <div class="table-container">
+                <table class="registros-table">
+                    <thead>
+                        <tr>
+                            <th>ID (Usuario)</th>
+                            <th>Fecha</th>
+                            <th>Registro</th>
+                            <th>Tipo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="registros-body">
+                        <tr>
+                            <td colspan="4" class="no-results">NS CAPTURADOS</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+    // Elementos del DOM
+    const snInput = document.getElementById('sn-input');
+    const reparacionesInput = document.getElementById('reparaciones-input');
+    const scrapInput = document.getElementById('scrap-input');
+    const motivoScrapSelect = document.getElementById('motivo-scrap');
+    const confirmarBtn = document.getElementById('confirmar-btn');
+    const registrosBody = document.getElementById('registros-body');
+    
+    // Obtener usuario actual
+    const usuarioActual = localStorage.getItem('username') || 'UsuarioDemo';
+    
+    // Array para almacenar registros
+    let registros = JSON.parse(localStorage.getItem('registros')) || [];
+    
+    // Función para formatear fecha
+    function formatearFecha(fecha) {
+        const opciones = { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        };
+        return fecha.toLocaleString('es-MX', opciones);
+    }
+    
+    // Función para renderizar los registros
+    function renderizarRegistros() {
+        registrosBody.innerHTML = '';
+        
+        if (registros.length === 0) {
+            registrosBody.innerHTML = `
+                <tr>
+                    <td colspan="4" style="text-align: center;">No hay registros aún</td>
+                </tr>
+            `;
+            return;
+        }
+        
+        registros.forEach(registro => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${registro.usuario}</td>
+                <td>${registro.fecha}</td>
+                <td>${registro.valor}</td>
+                <td>
+                    ${registro.tipo}
+                    ${registro.motivo ? `<span class="motivo-tag motivo-${registro.motivo}">${registro.motivo}</span>` : ''}
+                </td>
+            `;
+            registrosBody.appendChild(tr);
+        });
+    }
+    
+    // Función para agregar un nuevo registro
+    function agregarRegistro(tipo, valor, motivo = null) {
+        const nuevoRegistro = {
+            usuario: usuarioActual,
+            fecha: formatearFecha(new Date()),
+            tipo: motivo ? motivo : tipo,
+            valor: valor,
+            motivo: motivo ? motivo.toLowerCase() : null
+        };
+        
+        registros.unshift(nuevoRegistro);
+        localStorage.setItem('registros', JSON.stringify(registros));
+        renderizarRegistros();
+    }
+    
+    // Función para validar y procesar el formulario
+    function procesarFormulario() {
+        let registroAgregado = false;
+        
+        // Validar campo S/N (obligatorio)
+        if (snInput.value.trim() !== '') {
+            agregarRegistro('S/N', snInput.value.trim());
+            snInput.value = '';
+            registroAgregado = true;
+        }
+        
+        // Procesar reparaciones (opcional)
+        if (reparacionesInput.value.trim() !== '') {
+            agregarRegistro('Reparación', reparacionesInput.value.trim());
+            reparacionesInput.value = '';
+            registroAgregado = true;
+        }
+        
+        // Procesar scrap (con validación de motivo)
+        if (scrapInput.value.trim() !== '') {
+            if (!motivoScrapSelect.value) {
+                alert('Para registrar un Scrap es necesario seleccionar el motivo');
+                motivoScrapSelect.focus();
+                return;
+            }
+            
+            const motivoTexto = motivoScrapSelect.options[motivoScrapSelect.selectedIndex].text;
+            agregarRegistro('Scrap', scrapInput.value.trim(), motivoTexto);
+            scrapInput.value = '';
+            motivoScrapSelect.value = '';
+            registroAgregado = true;
+        }
+        
+        // Mostrar alerta si no se ingresó ningún registro
+        if (!registroAgregado) {
+            alert('Por favor ingrese al menos un valor en S/N, Reparaciones o Scrap');
+            snInput.focus();
+        }
+    }
+    
+    // Event Listeners
+    confirmarBtn.addEventListener('click', procesarFormulario);
+    
+    // Permitir enviar con Enter en cualquier campo
+    [snInput, reparacionesInput, scrapInput, motivoScrapSelect].forEach(element => {
+        element.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                procesarFormulario();
+            }
+        });
+    });
+    
+    // Cargar registros al iniciar
+    renderizarRegistros();
+    
+    // Poner foco en el campo S/N al cargar
+    snInput.focus();
+});
+    </script>
+</body>
+</html>

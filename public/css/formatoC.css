@@ -1,0 +1,284 @@
+/* ====== Base de estilos para EMPAQUE ====== */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #365a66;
+    margin: 0;
+    padding: 80px 0 20px;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.app-container {
+    display: flex;
+    width: 95%;
+    max-width: 1200px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    min-height: calc(100vh - 100px);
+}
+
+.app-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: #365a66;
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.content-container {
+    display: flex;
+    flex: 1;
+    margin-top: 80px;
+    height: calc(100% - 80px);
+}
+
+.form-section {
+    flex: 1;
+    padding: 25px;
+    background-color: #f8f9fa;
+    border-right: 1px solid #ddd;
+    min-width: 320px;
+    overflow-y: auto;
+    position: relative;
+}
+
+.table-section {
+    flex: 2;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+h1 {
+    color: #333;
+    font-size: 1.5em;
+    margin-bottom: 20px;
+    text-align: center;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #365a66;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+input[type="text"], select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 1em;
+    transition: border-color 0.3s;
+}
+
+input[type="text"]:focus, select:focus {
+    border-color: #4CAF50;
+    outline: none;
+}
+
+.acciones-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-confirmar {
+    width: 100%;
+    padding: 12px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    margin-top: 20px;
+    transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-confirmar:hover {
+    background-color: #45a049;
+}
+
+.btn-descargar {
+    width: 100%;
+    padding: 12px;
+    background-color: #179288e5; /* Azul tipo Bootstrap */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    margin-top: 5px;
+    transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-descargar:hover {
+    background-color: #179288e5;
+}
+
+.btn-volver {
+    background-color: #6c757d;
+    color: white;
+    padding: 6px 10px;
+    font-size: 0.8em;
+    border: none;
+    border-radius: 4px;
+    position: absolute;
+    bottom: 10px;
+    left: 5px; /* Ajustado más al borde */
+    cursor: pointer;
+    transition: background-color 0.3s;
+    z-index: 10;
+}
+
+#volver-btn {
+    display: inline-block;
+    margin-top: 120px;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 1em;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.3s;
+    position: relative;
+    left: -10px; /* ligeramente fuera del contenedor para acercarlo más al borde */
+}
+
+#volver-btn:hover {
+    background-color: #5a6268;
+}
+
+
+.btn-volver:hover {
+    background-color: #5a6268;
+}
+.top-right {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #66b3b7;
+}
+
+
+.logout-icon {
+    width: 20px;
+    height: 20px;
+    color: white;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: transform 0.2s;
+}
+
+.logout-icon:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+}
+
+
+.username {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.registros-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 0.9em;
+}
+
+.registros-table th {
+    background-color: #365a66;
+    color: white;
+    padding: 12px;
+    text-align: left;
+    position: sticky;
+    top: 0;
+}
+
+.registros-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #ddd;
+}
+
+.registros-table tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+.registros-table tr:hover {
+    background-color: #e9e9e9;
+}
+
+.table-container {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 70vh;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.motivo-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.motivo-cosmetica {
+    background-color: #ffeaa7;
+    color: #d35400;
+}
+
+.motivo-electronica {
+    background-color: #a29bfe;
+    color: #2d3436;
+}
+
+.motivo-infestado {
+    background-color: #fab1a0;
+    color: #c23616;
+}

@@ -1,0 +1,278 @@
+/* numero_serie_admin.css */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+.app-header {
+    background-color: #365a66;
+    color: white;
+    padding: 1rem 2rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.app-header h1, .app-header h2 {
+    margin: 0;
+}
+
+.app-container {
+    display: flex;
+    padding-top: 120px; /* Para que el contenido no quede detrás del header */
+    padding-bottom: 20px;
+    min-height: calc(100vh - 140px);
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+/* Estilos para el perfil de usuario */
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+  .top-right {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center; /* Alineación horizontal */
+    gap: 15px; /* Esto separa los elementos entre sí */
+}
+
+.user-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 10px;
+    border: 2px solid #66b3b7;
+    
+}
+.logout-icon:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+}
+.logout-icon {
+    width: 35px;
+    height: 35px;
+    cursor: pointer;
+    margin-top: 10px; /* Aumenta el espacio vertical */
+    transition: transform 0.2s;
+    gap: 8px; /* Esto separa todos los elementos */
+
+}
+.user-name {
+    font-weight: bold;
+}
+
+/* Sección de búsqueda */
+.form-section {
+    flex: 1;
+    padding: 20px;
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    margin: 0 10px 20px 20px;
+    border-radius: 8px;
+    height: fit-content;
+}
+
+.form-section h1 {
+    color: #2c3e50;
+    margin-bottom: 30px;
+    font-size: 24px;
+}
+
+.search-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+}
+
+#search-input {
+    flex: 1;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: border 0.3s;
+}
+
+#search-input:focus {
+    border-color: #3498db;
+    outline: none;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+}
+
+.btn-search {
+    padding: 12px 25px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-search:hover {
+    background-color: #2980b9;
+}
+
+/* Sección de la tabla */
+.table-section {
+    flex: 2;
+    padding: 20px;
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    margin: 0 20px 20px 10px;
+    border-radius: 8px;
+}
+
+.table-section h1 {
+    color: #2c3e50;
+    margin-bottom: 30px;
+    font-size: 24px;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.registros-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.registros-table th {
+    background-color: #3498db;
+    color: white;
+    padding: 12px 15px;
+    text-align: left;
+}
+
+.registros-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #ddd;
+}
+
+.registros-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+.no-results {
+    text-align: center;
+    color: #7f8c8d;
+    padding: 20px;
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .app-container {
+        flex-direction: column;
+        padding-top: 100px;
+    }
+    
+    .form-section, .table-section {
+        margin: 10px;
+    }
+    
+    .app-header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 10px;
+    }
+    
+    .user-profile {
+        margin-top: 10px;
+        align-self: flex-end;
+    }
+}
+/*AQUI VA SWEETALERT*/
+        .swal2-popup {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .swal2-title {
+            color: #2c3e50;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .swal2-confirm {
+            background-color: #2ecc71 !important;
+            border: none !important;
+            border-radius: 6px !important;
+            padding: 10px 25px !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        .swal2-confirm:hover {
+            background-color: #27ae60 !important;
+            transform: translateY(-2px) !important;
+        }
+        
+        .swal2-cancel {
+            background-color: #95a5a6 !important;
+            border: none !important;
+            border-radius: 6px !important;
+            padding: 10px 25px !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        .swal2-cancel:hover {
+            background-color: #7f8c8d !important;
+            transform: translateY(-2px) !important;
+        }
+        
+        /* Estilos para los tags de motivo en la tabla */
+        .motivo-tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        .motivo-cosmetica {
+            background-color: #ffeaa7;
+            color: #d35400;
+        }
+        
+        .motivo-electronica {
+            background-color: #a29bfe;
+            color: #2d3436;
+        }
+        
+        .motivo-infestado {
+            background-color: #fab1a0;
+            color: #c23616;
+        }

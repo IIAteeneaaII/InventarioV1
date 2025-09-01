@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel Administrador - SIMOD</title>
+  <link rel="stylesheet" href="/css/admin_dashboard.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+</head>
+<body>
+  <div class="dashboard-container">
+    <!-- Botón cerrar sesión en esquina superior derecha -->
+    <div class="user-header" style="justify-content: flex-end;">
+        <div class="logout-container">
+          <i class="fas fa-right-from-bracket logout-icon" onclick="cerrarSesion()" title="Cerrar sesión"></i>
+        </div>
+    </div>
+    <h1 style="text-align:center;">Bienvenido al Panel de Administración SIMOD</h1>
+    <div class="menu-grid">
+    <a href="/crearusuario" class="menu-btn btn btn-primary">
+      <i class="fas fa-user-plus"></i>
+      <span>Crear usuario</span>
+    </a>
+
+    <a href="/listarusuarios" class="menu-btn btn btn-primary">
+      <i class="fas fa-users-cog"></i>
+      <span>Editar usuarios</span>
+    </a>
+
+      <a href="/historial" class="menu-btn btn btn-primary">
+        <i class="fas fa-search"></i>
+        <span>Buscar módem</span>
+      </a>
+      <a href="/resumen" class="menu-btn btn btn-primary">
+        <i class="fas fa-cubes"></i>
+        <span>Contabilidad por SKU</span>
+      </a>
+      <a href="/resumen_totales" class="menu-btn btn btn-primary">
+        <i class="fas fa-chart-pie"></i>
+        <span>Gráficas</span>
+      </a>
+      <a href="/admin/cosmetica" class="menu-btn btn btn-primary">
+        <i class="fas fa-boxes"></i>
+        <span>Inventario Cosmética</span>
+      </a>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="/js/cerrarsesion.js"></script>
+  <script>
+    document.getElementById("descargar-btn").addEventListener("click", function () {
+      const tabla = document.querySelector(".registros-table");
+      if (!tabla) {
+        Swal.fire("Error", "No se encontró la tabla de registros.", "error");
+        return;
+      }
+      const tablaHTML = tabla.outerHTML.replace(/ /g, '%20');
+      const nombreArchivo = 'Empaque_4K_Alexa.xls';
+      const enlaceDescarga = document.createElement('a');
+      enlaceDescarga.href = 'data:application/vnd.ms-excel,' + tablaHTML;
+      enlaceDescarga.download = nombreArchivo;
+      document.body.appendChild(enlaceDescarga);
+      enlaceDescarga.click();
+      document.body.removeChild(enlaceDescarga);
+    });
+
+    document.getElementById("volver-btn").addEventListener("click", function () {
+      window.history.back();
+    });
+  </script>
+  
+</body>
+</html>

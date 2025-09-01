@@ -1,0 +1,406 @@
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #365a66;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .admin-container {
+      background-color: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1, h2 {
+      color: #2c3e50;
+      text-align: center;
+    }
+
+    h1 {
+      margin-bottom: 30px;
+      font-size: 1.8rem;
+      position: relative;
+      padding-bottom: 15px;
+    }
+
+    h1::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 3px;
+      background: #66b3b7;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      margin-top: 30px;
+      color: #2a7d7f;
+      text-align: left;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e0f7f8;
+    }
+
+    /* ========== TABLA DE USUARIOS ========== */
+    .table-container {
+      overflow-x: auto;
+      margin-bottom: 30px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .usuarios-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .usuarios-table th {
+      background-color: #66b3b7;
+      color: white;
+      padding: 1rem;
+      text-align: left;
+      font-weight: normal;
+    }
+
+    .usuarios-table td {
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid #eee;
+      color: #555;
+    }
+
+    .usuarios-table tr:hover {
+      background-color: #f5f9fa;
+    }
+
+    .rol-tag {
+      display: inline-block;
+      padding: 0.3rem 0.6rem;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      background-color: #e0f7f8;
+      color: #2a7d7f;
+    }
+
+    .acciones-btn {
+      background: none;
+      border: none;
+      color: #66b3b7;
+      cursor: pointer;
+      margin-right: 0.5rem;
+      font-size: 1rem;
+      transition: color 0.3s;
+    }
+
+    .acciones-btn:hover {
+      color: #4e8c8f;
+    }
+
+    /* ========== FORMULARIOS ========== */
+    .form-section {
+      background: #f8f9fa;
+      padding: 25px;
+      border-radius: 8px;
+      margin-top: 20px;
+      border: 1px solid #eee;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #555;
+      font-size: 0.95rem;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="password"]:focus,
+    select:focus {
+      border-color: #66b3b7;
+      outline: none;
+    }
+
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23555' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 12px;
+      padding-right: 40px;
+    }
+
+    .btn {
+      padding: 12px 18px;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-primary {
+      background-color: #66b3b7;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #4e8c8f;
+    }
+
+    .btn-secondary {
+      background-color: #f1f1f1;
+      color: #555;
+      border: 1px solid #ddd;
+    }
+
+    .btn-secondary:hover {
+      background-color: #e5e5e5;
+    }
+
+    .btn-icon {
+      margin-right: 8px;
+    }
+
+    .btn-submit {
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    /* ========== MODAL ========== */
+    #modalEditar {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+      width: 90%;
+      max-width: 500px;
+      padding: 30px;
+      position: relative;
+    }
+
+    .modal-header {
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      color: #2a7d7f;
+      font-size: 1.4rem;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .modal-buttons .btn {
+      flex: 1;
+    }
+
+    /* ========== HEADER DE USUARIO ========== */
+    .user-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #e0f7f8;
+    }
+
+
+  .top-right {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center; /* Alineación horizontal */
+    gap: 15px; /* Esto separa los elementos entre sí */
+}
+
+.user-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 10px;
+    border: 2px solid #66b3b7;
+    
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+
+.logout-container {
+  position: absolute;
+  top: -20px;
+  right: 0;
+}
+
+.logout-icon {
+  font-size: 1.5rem;
+  color: #66b3b7;
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.logout-icon:hover {
+  transform: scale(1.1);
+  opacity: 0.8;
+  color: #4e8c8f;
+}
+
+    .username {
+      font-weight: bold;
+      color: #2c3e50;
+      font-size: 1.1rem;
+    }
+
+    .user-role {
+      color: #2a7d7f;
+      font-size: 0.9rem;
+    }
+
+    /* ========== MENSAJES DE ESTADO ========== */
+    .status-message {
+      padding: 12px 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      text-align: center;
+      font-weight: 500;
+    }
+
+    .success {
+      background-color: #e0f7f8;
+      color: #2a7d7f;
+      border: 1px solid #b1e4e7;
+    }
+
+    .error {
+      background-color: #fde8e8;
+      color: #c53030;
+      border: 1px solid #f8c5c5;
+    }
+    
+    /* Animación para nuevos usuarios */
+    @keyframes highlight {
+      0% { background-color: #e0f7f8; }
+      100% { background-color: transparent; }
+    }
+    
+    .highlight {
+      animation: highlight 2s ease-out;
+    }
+/*AQUI VA SWEETALERT*/
+        .swal2-popup {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .swal2-title {
+            color: #2c3e50;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .swal2-confirm {
+            background-color: #2ecc71 !important;
+            border: none !important;
+            border-radius: 6px !important;
+            padding: 10px 25px !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        .swal2-confirm:hover {
+            background-color: #27ae60 !important;
+            transform: translateY(-2px) !important;
+        }
+        
+        .swal2-cancel {
+            background-color: #95a5a6 !important;
+            border: none !important;
+            border-radius: 6px !important;
+            padding: 10px 25px !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        .swal2-cancel:hover {
+            background-color: #7f8c8d !important;
+            transform: translateY(-2px) !important;
+        }
+        
+        /* Estilos para los tags de motivo en la tabla */
+        .motivo-tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        .motivo-cosmetica {
+            background-color: #ffeaa7;
+            color: #d35400;
+        }
+        
+        .motivo-electronica {
+            background-color: #a29bfe;
+            color: #2d3436;
+        }
+        
+        .motivo-infestado {
+            background-color: #fab1a0;
+            color: #c23616;
+        }

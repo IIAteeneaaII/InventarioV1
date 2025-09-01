@@ -1,0 +1,48 @@
+@use "variables" as v;
+
+//Mixins for mediaQueries
+@mixin phone{
+    @media (min-width: v.$phone){
+        @content;
+    }
+}
+@mixin phoneMax{
+    @media (max-width: v.$tablet){
+        @content;
+    }
+}
+@mixin tablet{
+    @media (min-width: v.$tablet){
+        @content;
+    }
+}
+@mixin tablet-desktop{
+    @media (min-width: v.$tablet-desktop){
+        @content;
+    }
+}
+@mixin desktop{
+    @media (min-width: v.$desktop){
+        @content;
+    }
+}
+@mixin desktop-max{
+    @media (min-width: v.$desktop-max){
+        @content;
+    }
+}
+
+//General Mixins
+@mixin grid($columns, $rows, $gap){
+    display: grid;
+    grid-template-columns: repeat($columns, 1fr);
+    grid-template-rows: repeat($rows, 1fr);
+    gap: $gap;
+}
+
+body, html{
+    overflow-x: hidden;
+}
+::-webkit-scrollbar {
+    display: none;
+}

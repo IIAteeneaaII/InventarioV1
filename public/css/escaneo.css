@@ -1,0 +1,142 @@
+/* Estilos para el sistema de escaneo rápido */
+.status-indicator {
+  display: inline-block;
+  padding: 6px 12px;
+  margin-left: 15px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+/* Colores de estado SOLO en el indicador, no en la tabla */
+.status-indicator .ready { color: #0275d8; }
+.status-indicator .processing { color: #f0ad4e; }
+.status-indicator .success { color: #5cb85c; }
+.status-indicator .error { color: #d9534f; }
+.status-indicator .warning { color: #f0ad4e; }
+
+/* Contador superior */
+.scan-counter {
+  position: fixed;
+  top: 80px;
+  right: 10px;
+  background: #333;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-weight: bold;
+  z-index: 1000;
+  border-left: 4px solid #007bff; /* destaca el SKU */
+}
+
+/* Mejoras para el formulario de escaneo */
+#sn-input {
+  font-size: 1.2em;
+  padding: 10px;
+  width: 100%;
+  margin-bottom: 15px;
+  border: 2px solid #007bff;
+  border-radius: 4px;
+}
+
+#sn-input:focus {
+  border-color: #0056b3;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  outline: none;
+}
+
+#guardar-btn {
+  display: inline-block;
+  font-weight: bold;
+  padding: 10px 20px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+#guardar-btn:hover { background-color: #218838; }
+
+#finalizar-lote-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+  margin-top: 20px;
+  transition: background-color 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+#finalizar-lote-btn:hover { background-color: #c82333; }
+
+/* Estilo para filas en la tabla */
+#registros-body tr {
+  transition: background-color 0.3s ease;
+  background-color: transparent; /* por defecto, sin color */
+}
+
+/* QUITAMOS el highlight automático en la primera fila */
+/*#registros-body tr:first-child {
+  background-color: rgba(40, 167, 69, 0.1);
+}*/
+
+/* Colores especiales */
+.fila-scrap {
+  background-color: rgba(220, 53, 69, 0.1) !important;
+}
+.fila-duplicado {
+  background-color: rgba(2, 117, 216, 0.15) !important; /* azul claro solo duplicados */
+}
+
+/* Mejoras de rendimiento */
+.table-container {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-top: 20px;
+}
+
+/* Indicador visual del SKU actual */
+.sku-indicator {
+  position: fixed;
+  top: 80px;
+  left: 10px;
+  background: #007bff;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-weight: bold;
+  z-index: 1000;
+}
+
+/* Estilos para el botón Auto-Enter */
+.btn-toggle {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  width: 100%;
+}
+.autoenter-on { background-color: #4CAF50; color: white; }
+.autoenter-off { background-color: #f44336; color: white; }
+
+@media (max-width: 768px) {
+  .scan-counter {
+    top: 5px;
+    right: 5px;
+    padding: 3px 6px;
+    font-size: 0.8em;
+  }
+}

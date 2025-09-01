@@ -1,0 +1,47 @@
+<!-- filepath: c:\Users\RAM\Documents\GitHub\Inventario\views\visualizadorUV.ejs -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Resultados de Test de Logs - Visualizador UV</title>
+  <link rel="stylesheet" href="/css/style.css"><!-- Opcional -->
+  <style>
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    .ok { color: green; font-weight: bold; }
+    .fail { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Resultados de Test de Logs</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Caso</th>
+        <th>Descripción</th>
+        <th>Estado</th>
+        <th>Resultado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% tests.forEach(test => { %>
+        <tr>
+          <td><%= test.code %></td>
+          <td><%= test.description %></td>
+          <td class="<%= test.passed ? 'ok' : 'fail' %>">
+            <%= test.passed ? '✅ Cumplido' : '❌ Falló' %>
+          </td>
+          <td>
+            <%= test.passed
+              ? 'El caso de prueba se ejecutó correctamente.'
+              : 'El caso de prueba falló. Revisar los filtros o la estructura de los logs.' %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <form method="GET" action="/visualizador-uv">
+    <button type="submit">Actualizar Resultados</button>
+  </form>
+</body>
+</html>

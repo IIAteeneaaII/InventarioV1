@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Sistema de Inventaryio</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  
+  <div class="container mt-5">
+    <h1>Bienvenido, <%= usuario.nombre %></h1>
+    <p>Rol: <%= usuario.rol %></p>
+    
+    <div class="row mt-4">
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Registros</h5>
+            <p class="card-text">Administra los registros de productos</p>
+            <a href="/registros" class="btn btn-primary">Ir a Registros</a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Lotes</h5>
+            <p class="card-text">Administra los lotes de productos</p>
+            <a href="/lotes" class="btn btn-primary">Ir a Lotes</a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Reportes</h5>
+            <p class="card-text">Genera reportes del inventario</p>
+            <a href="/reportes" class="btn btn-primary">Ir a Reportes</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/authCheck.js"></script>
+</body>
+</html>

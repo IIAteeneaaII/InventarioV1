@@ -1,0 +1,379 @@
+/* Modifica estos estilos en tu archivo CSS */
+
+/* Estilos generales - Añade padding-top para bajar todo el contenido */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #365a66;
+    margin: 0;
+    padding: 80px 0 20px; /* 80px arriba, 0 lados, 20px abajo */
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+/* Ajusta el contenedor principal */
+.app-container {
+    display: flex;
+    width: 95%;
+    max-width: 1200px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin: 0 auto; /* Centra el contenedor */
+    overflow: hidden;
+    min-height: calc(100vh - 100px); /* Ajusta la altura */
+}
+
+/* Barra superior fija */
+.app-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: #365a66;
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* Ajusta el contenido principal */
+.content-container {
+    display: flex;
+    flex: 1;
+    margin-top: 80px; /* Debe ser igual o mayor que la altura del header */
+    height: calc(100% - 80px);
+}
+
+/* Sección del formulario */
+.form-section {
+    flex: 1;
+    padding: 25px;
+    background-color: #f8f9fa;
+    border-right: 1px solid #ddd;
+    min-width: 320px;
+    overflow-y: auto;
+}
+
+/* Sección de la tabla */
+.table-section {
+    flex: 2;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+/* Estilos generales */
+
+
+/* Sección del formulario */
+.form-section {
+    flex: 1;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-right: 1px solid #ddd;
+    min-width: 300px;
+}
+
+
+h1 {
+    color: #333;
+    font-size: 1.5em;
+    margin-bottom: 20px;
+    text-align: center;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #365a66;
+}
+
+/* Estilos para los grupos de formulario */
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+input[type="text"], select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 1em;
+    transition: border-color 0.3s;
+}
+
+input[type="text"]:focus, select:focus {
+    border-color: #4CAF50;
+    outline: none;
+}
+
+/* Estilos para el botón de confirmar */
+.btn-confirmar {
+    width: 100%;
+    padding: 12px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    margin-top: 20px;
+    transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-confirmar:hover {
+    background-color: #45a049;
+}
+
+.btn-confirmar i {
+    font-size: 1.1em;
+}
+.top-right {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+}
+
+  .top-right {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center; /* Alineación horizontal */
+    gap: 15px; /* Esto separa los elementos entre sí */
+}
+
+.user-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 10px;
+    border: 2px solid #66b3b7;
+    
+}
+.logout-icon:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+}
+.logout-icon {
+    width: 35px;
+    height: 35px;
+    cursor: pointer;
+    margin-top: 10px; /* Aumenta el espacio vertical */
+    transition: transform 0.2s;
+    gap: 8px; /* Esto separa todos los elementos */
+
+}
+/* Estilos para la columna Tipo */
+.registros-table td:nth-child(4) {
+    text-align: left;
+    padding-left: 12px;
+}
+
+/* Estilo base para todos los tipos */
+.tipo-cell {
+    display: block;
+    width: 100%;
+}
+
+/* Estilo para los tags de motivo */
+.motivo-tag {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+    color: white;
+    text-transform: capitalize;
+    margin: 0; /* Eliminamos cualquier margen */
+    position: relative;
+    left: -4px; /* Compensación para alinear perfectamente */
+}
+
+/* Colores específicos para cada motivo */
+.motivo-cosmetica {
+    background-color: #f39c12; /* Naranja */
+}
+
+.motivo-electronica {
+    background-color: #3498db; /* Azul */
+}
+
+.motivo-infestado {
+    background-color: #e74c3c; /* Rojo */
+}
+
+/* Estilo para tipos normales (S/N, Reparación) */
+.tipo-normal {
+    display: inline-block;
+    padding: 2px 0; /* Similar padding vertical al tag */
+}
+.username {
+    font-size: 1rem;
+    font-weight: bold;
+    color: #ffffff;
+}
+/* Estilos para la tabla de registros */
+.registros-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 0.9em;
+}
+
+.registros-table th {
+    background-color: #365a66;
+    color: white;
+    padding: 12px;
+    text-align: left;
+    position: sticky;
+    top: 0;
+}
+
+.registros-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #ddd;
+}
+
+.registros-table tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+.registros-table tr:hover {
+    background-color: #e9e9e9;
+}
+
+#volver-btn {
+    display: inline-block;
+    margin-top: 20px;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 1em;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.3s;
+    position: relative;
+    left: -10px; /* ligeramente fuera del contenedor para acercarlo más al borde */
+}
+
+#volver-btn:hover {
+    background-color: #5a6268;
+}
+
+
+/* Contenedor de la tabla con scroll */
+.table-container {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 70vh;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* Indicador de campo obligatorio */
+.required::after {
+    content: " *";
+    color: red;
+}
+
+/* Estilos responsivos */
+@media (max-width: 768px) {
+    .app-container {
+        flex-direction: column;
+    }
+    
+    .form-section {
+        border-right: none;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .table-section {
+        padding-top: 10px;
+    }
+    
+    .table-container {
+        max-height: 50vh;
+    }
+}
+/*AQUI VA SWEETALERT*/
+        .swal2-popup {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .swal2-title {
+            color: #2c3e50;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .swal2-confirm {
+            background-color: #2ecc71 !important;
+            border: none !important;
+            border-radius: 6px !important;
+            padding: 10px 25px !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        .swal2-confirm:hover {
+            background-color: #27ae60 !important;
+            transform: translateY(-2px) !important;
+        }
+        
+        .swal2-cancel {
+            background-color: #95a5a6 !important;
+            border: none !important;
+            border-radius: 6px !important;
+            padding: 10px 25px !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        .swal2-cancel:hover {
+            background-color: #7f8c8d !important;
+            transform: translateY(-2px) !important;
+        }
+        
+        /* Estilos para los tags de motivo en la tabla */
+        .motivo-tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        .motivo-cosmetica {
+            background-color: #ffeaa7;
+            color: #d35400;
+        }
+        
+        .motivo-electronica {
+            background-color: #a29bfe;
+            color: #2d3436;
+        }
+        
+        .motivo-infestado {
+            background-color: #fab1a0;
+            color: #c23616;
+        }

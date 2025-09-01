@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Historial de Número de Serie</title>
+  <link rel="stylesheet" href="/css/admin_dashboard.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+  <div class="admin-container">
+    <div class="h2-wrapper">
+      <h2>Consultar historial de proceso</h2>
+      <button id="btn-regresar" class="btn btn-regresar"><i class="fas fa-arrow-left"></i> Inicio</button>
+    </div>
+
+    <!-- Formulario de búsqueda -->
+    <form class="form-busqueda-ns" method="GET" action="/historial">
+      <div class="busqueda-input-wrap">
+        <input 
+          type="text" 
+          name="sn" 
+          placeholder="Ingresa número de serie" 
+          value="<%= sn || '' %>" 
+          required 
+          class="input-ns" />
+        <button type="submit" class="btn btn-primary">Buscar</button>
+        <a href="/historial" class="btn btn-secondary btn-busqueda-limpiar">Limpiar</a>
+      </div>
+    </form>
+
+    <!-- Info SKU debajo del buscador -->
+    <% if (sn && skuNombre && (skuItem || skuId)) { %>
+      <div class="sku-info" style="margin: 8px 0; font-size: 14px; color: #374151;">
+        <strong>SKU:</strong> <%= skuNombre %>
+        <% if (skuItem) { %> — <strong>Item:</strong> <%= skuItem %> <% } %>
+        <% if (skuId) { %> — <strong>ID:</strong> <%= skuId %> <% } %>
+      </div>
+    <% } %>
+
+    <% if (sn) { %>
+      <% if (fasesRealizadas.length > 0) { %>
+        <h2>
+          Historial del módem: <%= sn %>
+          <% if (skuNombre && (skuItem || skuId)) { %>
+            — SKU: <%= skuNombre %>
+            <% if (skuItem) { %> (Item: <%= skuItem %>) <% } %>
+            <% if (skuId) { %> <% } %>
+          <% } %>
+        </h2>
+
+        <div class="timeline-horizontal">
+          <% const fases = ['REGISTRO', 'TEST_INICIAL', 'COSMETICA', 'ENSAMBLE', 'RETEST', 'EMPAQUE']; %>
+          <% const iconMap = {
+            'REGISTRO': 'registro',
+            'TEST_INICIAL': 'testinicial',
+            'COSMETICA': 'cosmetica',
+            'ENSAMBLE': 'ensamble',
+            'RETEST': 'retest',
+            'EMPAQUE': 'empaque'
+          }; %>
+
+          <%
+            const incluyeTestInicial = fasesRealizadas.includes('TEST_INICIAL');
+            const incluyeEnsamble = fasesRealizadas.includes('ENSAMBLE');
+          %>
+
+          <% 
+            // Verificar si se ha llegado a la fase de empaque
+            const llegoAEmpaque = fasesRealizadas.includes('EMPAQUE');
+            
+            fases.forEach((fase, index) => {
+            let completada = fasesRealizadas.includes(fase);
+            let esActual = fasesRealizadas[fasesRealizadas.length - 1] === fase;
+
+            // Reglas para COSMETICA
+            const mostrarMorado = (fase === 'COSMETICA' && incluyeTestInicial && !incluyeEnsamble && !llegoAEmpaque);
+            if (fase === 'COSMETICA' && incluyeEnsamble) {
+              completada = true;
+            }
+            
+            // Si llegó a empaque, todas las fases anteriores se marcan como completadas
+            if (llegoAEmpaque && fase !== 'EMPAQUE') {
+              completada = true;
+              esActual = false;
+            }
+          %>
+            <div class="timeline-item 
+                        <% if (mostrarMorado) { %> morado <% } else { %>
+                        <%= completada ? 'pasada' : 'omitida' %>
+                        <%= esActual ? ' actual' : '' %>
+                        <% } %>">
+              <div class="timeline-icon">
+                <img src="/img/<%= iconMap[fase] %>.png" alt="<%= fase %>">
+              </div>
+              <div class="timeline-label"><%= fase.replace('_', ' ') %></div>
+            </div>
+
+            <% if (index < fases.length - 1) { %>
+              <div class="timeline-line <%= llegoAEmpaque ? 'empaque-completo' : '' %>"></div>
+            <% } %>
+          <% }) %>
+        </div>
+
+      <% } else { %>
+        <p class="status-message error">
+          No se encontró historial para el número de serie <strong><%= sn %></strong>.
+        </p>
+      <% } %>
+    <% } %>
+  </div>
+
+<script>
+  document.getElementById('btn-regresar').addEventListener('click', function() {
+    window.location.href = '/adminventario';
+  });
+</script>
+</body>
+</html>

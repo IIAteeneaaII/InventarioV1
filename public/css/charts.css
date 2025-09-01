@@ -1,0 +1,391 @@
+/* Mejora el layout de la cuadrícula para 4 gráficas */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2 columnas */
+  grid-template-rows: repeat(2, 1fr);    /* 2 filas */
+  gap: 20px;
+  margin-top: 20px;
+}
+
+@media (max-width: 900px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, auto);
+  }
+}
+
+.chart-section {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-header {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chart-header i {
+  color: #1a9ad7;
+}
+
+.chart-container {
+  flex: 1;
+  position: relative;
+  min-height: 250px;
+}
+
+.loading-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+}
+
+.loading-indicator i {
+  font-size: 24px;
+  margin-bottom: 10px;
+  color: #1a9ad7;
+}
+
+.error-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #d9534f;
+}
+
+.error-message i {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+/* Estilos base */
+:root {
+  --sidebar-bg: #2c4d58;
+  --main-bg: #f5f7fa;
+  --counter-bg: #1a9ad7;
+  --text-light: #ffffff;
+  --text-dark: #333333;
+  --border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Arreglar el problema de los selects */
+select.form-control {
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white; /* Color del texto seleccionado */
+  width: 100%;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+  appearance: none; /* Eliminar apariencia nativa */
+  background-image: url("data:image/svg+xml;utf8,<svg fill='white' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
+}
+
+/* Estilos para las opciones del select */
+select.form-control option {
+  background-color: var(--sidebar-bg);
+  color: var(--text-light);
+}
+
+/* Colores específicos para los dropdowns abiertos */
+select.form-control:focus {
+  outline: none;
+  border-color: var(--counter-bg);
+  box-shadow: 0 0 0 2px rgba(26, 154, 215, 0.3);
+}
+
+/* Firefox específico */
+@-moz-document url-prefix() {
+  select.form-control {
+    color: white;
+    background-color: var(--sidebar-bg);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+}
+
+/* Estilos para el dashboard de resumen */
+:root {
+  --sidebar-bg: #2c4d58;
+  --main-bg: #f5f7fa;
+  --counter-bg: #1a9ad7;
+  --text-light: #ffffff;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --header-bg: #f8f9fa;
+  --chart-border: #e9ecef;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: var(--main-bg);
+}
+
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 280px;
+  background-color: var(--sidebar-bg);
+  color: var(--text-light);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar h1 {
+  font-size: 2.5rem;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar h2 {
+  font-size: 2rem;
+  margin: 0 0 20px 0;
+  padding: 0;
+}
+
+.btn {
+  padding: 12px;
+  border-radius: 4px;
+  border: none;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.btn:hover {
+  filter: brightness(1.1);
+}
+
+#REGRESAR {
+  background-color: var(--counter-bg);
+}
+
+.btn-refresh {
+  background-color: #16a085;
+  transition: all 0.3s;
+}
+
+.btn-refresh:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn-refresh i {
+  margin-right: 8px;
+}
+
+.form-control {
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  width: 100%;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+}
+
+/* Selector de SKU */
+.sku-selector-container {
+  margin-top: 15px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 15px;
+}
+
+.sku-selector-container label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+/* Main content */
+.main-content {
+  flex: 1;
+  padding: 20px;
+  background-color: white;
+  overflow-y: auto;
+}
+
+.total-counter {
+  background-color: var(--counter-bg);
+  color: white;
+  padding: 20px;
+  text-align: center;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.counter-label {
+  font-size: 1.25rem;
+  margin-bottom: 10px;
+}
+
+.counter-value {
+  font-size: 4rem;
+  font-weight: 700;
+}
+
+/* Grid de gráficas */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+/* Chart sections */
+.chart-section {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  border: 1px solid var(--chart-border);
+}
+
+.chart-header {
+  padding: 15px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--chart-border);
+  display: flex;
+  align-items: center;
+  font-size: 1.1rem;
+  background-color: var(--header-bg);
+}
+
+.chart-header i {
+  margin-right: 10px;
+  color: var(--counter-bg);
+}
+
+.chart-container {
+  height: 300px;
+  padding: 15px;
+  position: relative;
+}
+
+/* Estado de las gráficas */
+.loading-indicator,
+.error-message,
+.no-data-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.loading-indicator i,
+.error-message i,
+.no-data-message i {
+  margin-right: 8px;
+}
+
+.error-message {
+  color: #dc3545;
+}
+
+/* Estilos para el selector de SKU */
+.selector-container {
+  margin-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  padding-top: 15px;
+}
+
+.selector-container label {
+  display: block;
+  color: white;
+  margin-bottom: 5px;
+  font-size: 0.9rem;
+}
+
+/* Sección de detalle de SKU */
+#skuDetailSection {
+  display: block; /* Inicialmente visible */
+}
+
+#selectedSkuName {
+  font-weight: bold;
+  color: #1a9ad7;
+}
+
+/* Destacar el selector de SKU */
+#skuSelector {
+  border: 2px solid #0077cc;
+  box-shadow: 0 0 5px rgba(0, 119, 204, 0.3);
+  margin: 10px 0;
+  transition: all 0.3s;
+}
+
+#skuSelector:focus {
+  border-color: #00aaff;
+  box-shadow: 0 0 8px rgba(0, 170, 255, 0.5);
+}
+
+/* Tooltip para el selector */
+.selector-hint {
+  display: block;
+  color: #0077cc;
+  font-size: 0.8em;
+  margin-top: 4px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 992px) {
+  .dashboard-container {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+  }
+  
+  .chart-container {
+    height: 250px;
+  }
+}
+
+/* Fix específico para Chart.js */
+canvas {
+  max-width: 100%;
+}

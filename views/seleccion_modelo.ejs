@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selección de Lote Existente</title>
+    <link rel="stylesheet" href="/css/menu_modelos.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header" ; display: flex; align-items: center; justify-content: space-between; padding: 1rem;">
+            <h2 style="color: white; margin: 0;">Selección de Modelo</h2>
+            <div class="user-profile" style="display: flex; align-items: center; gap: 10px;">
+                <img src="/img/usuario.webp" alt="Usuario" class="user-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: #fff; border: 2px solid #fff;">
+                <span id="username-display" class="user-name" style="font-size: 1.2em; font-weight: bold; color: #fff;">Usuario</span>
+                <button id="logout-icon" class="btn btn-link p-0 ms-3" title="Cerrar sesión" style="background: none; border: none; color: #fff; font-size: 1.5em; cursor: pointer; padding: 0; margin-left: 15px;">
+                    <i class="fas fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="lotes-container">
+                <!-- Barra de búsqueda -->
+                <div class="search-bar">
+                    <input type="text" id="buscar-lote" class="search-input" placeholder="Buscar por SKU o nombre...">
+                </div>
+
+                <!-- Tabla de lotes -->
+                <div class="table-container">
+                    <table class="lotes-table">
+                        <thead>
+                            <tr>
+                                <th>SKU</th>
+                                <th>Nombre del Producto</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-lotes">
+                            <!-- Las filas se generan dinámicamente con JavaScript -->
+                        </tbody>
+                    </table>
+                    <div id="no-results" class="no-results" style="display: none;">
+                        <i class="fas fa-search-minus"></i>
+                        <p>No se encontraron resultados para tu búsqueda</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div class="actions-bar" style="display: flex; justify-content: flex-end; padding: 1rem;">
+            <button id="confirmar-seleccion-btn" class="btn-primary" disabled>
+                <i class="fas fa-check-circle"></i>
+                Confirmar Selección
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/js/cerrarsesion.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Obtener datos del usuario del localStorage
+            let usuarioObj;
+            try {
+                usuarioObj = JSON.parse(localStorage.getItem('usuarioActual'));
+            } catch (e) {
+                usuarioObj = null;
+            }
+
+            // Mostrar nombre de usuario
+            const nombreUsuario = usuarioObj?.nombre || usuarioObj?.userName || 'Usuario';
+            document.getElementById('username-display').textContent = nombreUsuario;
+
+            // Datos de SKU-Nombre
+            const skus = {
+                '69746': '4K M37',
+                '69360': '4K M36 Blanco',
+                '81809': '4K M36 Azul',
+                '72608': 'Extender AP',
+                '67278': 'Extender HUAWEI',
+                '80333': 'AP EH7',
+                '73488': '4K Alexa',
+                '72676': 'V5 Small',
+                '66262': 'V5',
+                '69643': 'Fiberhome',
+                '69644': 'ZTE',
+                '76735': 'X6',
+                '74497': 'Fiberhome Extender',
+                '69358': 'Soundbox'
+            };
+
+            // Variables para controlar la selección
+            let loteSeleccionado = null;
+            const confirmarBtn = document.getElementById('confirmar-seleccion-btn');
+            const tablaLotes = document.getElementById('tabla-lotes');
+            const buscarInput = document.getElementById('buscar-lote');
+            const noResults = document.getElementById('no-results');
+
+            // Función para renderizar los SKUs en la tabla
+            function renderizarSKUs(data) {
+                tablaLotes.innerHTML = '';
+                if (Object.keys(data).length === 0) {
+                    noResults.style.display = 'block';
+                    return;
+                }
+                noResults.style.display = 'none';
+
+                for (const [sku, nombre] of Object.entries(data)) {
+                    const fila = document.createElement('tr');
+                    fila.dataset.sku = sku;
+                    fila.dataset.nombre = nombre;
+                    fila.innerHTML = `
+                        <td><span class="sku-tag">${sku}</span></td>
+                        <td>${nombre}</td>
+                    `;
+
+                    fila.addEventListener('click', function() {
+                        // Quitar selección de otras filas
+                        document.querySelectorAll('#tabla-lotes tr').forEach(row => {
+                            row.classList.remove('selected-row');
+                        });
+
+                        // Seleccionar esta fila
+                        this.classList.add('selected-row');
+
+                        // Guardar selección
+                        loteSeleccionado = {
+                            sku: this.dataset.sku,
+                            nombre: this.dataset.nombre
+                        };
+
+                        // Habilitar botón de confirmar
+                        confirmarBtn.disabled = false;
+
+                        // Animación de selección
+                        this.style.transform = "scale(1.01)";
+                        setTimeout(() => {
+                            this.style.transform = "scale(1)";
+                        }, 200);
+                    });
+
+                    tablaLotes.appendChild(fila);
+                }
+            }
+
+            // Renderizar todos los SKUs inicialmente
+            renderizarSKUs(skus);
+
+            // Función de búsqueda
+            function buscarSKUs(termino) {
+                termino = termino.toLowerCase().trim();
+                if (!termino) {
+                    return skus;
+                }
+
+                const resultados = {};
+                for (const [sku, nombre] of Object.entries(skus)) {
+                    if (sku.toLowerCase().includes(termino) || nombre.toLowerCase().includes(termino)) {
+                        resultados[sku] = nombre;
+                    }
+                }
+                return resultados;
+            }
+
+            // Evento de búsqueda al escribir
+            buscarInput.addEventListener('input', function() {
+                const termino = this.value;
+                const resultados = buscarSKUs(termino);
+                renderizarSKUs(resultados);
+            });
+
+            // Manejar confirmación final
+            confirmarBtn.addEventListener('click', function() {
+                if (!loteSeleccionado) return;
+
+                Swal.fire({
+                    title: 'Confirmar Selección',
+                    html: `¿Estás seguro de seleccionar el producto?<br><br>
+                           <b>SKU:</b> ${loteSeleccionado.sku}<br>
+                           <b>Nombre:</b> ${loteSeleccionado.nombre}`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, confirmar',
+                    cancelButtonText: 'Cancelar',
+                    customClass: {
+                        confirmButton: 'swal2-confirm',
+                        cancelButton: 'swal2-cancel'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Guardar selección en localStorage
+                        localStorage.setItem('loteSeleccionado', JSON.stringify(loteSeleccionado));
+
+                        Swal.fire({
+                            title: '¡Selección Confirmada!',
+                            html: `<div style="text-align: center;">
+                                      <i class="fas fa-check-circle" style="font-size: 4rem; color: #27ae60;"></i>
+                                      <p style="font-size: 1.4rem; margin-top: 1rem;">SKU <b>${loteSeleccionado.sku}</b> (${loteSeleccionado.nombre})<br>confirmado correctamente</p>
+                                   </div>`,
+                            icon: 'success',
+                            confirmButtonText: 'Continuar',
+                            customClass: {
+                                confirmButton: 'swal2-confirm'
+                            }
+                        }).then(() => {
+                            fetch('/seleccionar-sku', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    sku: loteSeleccionado.sku
+                                })
+                            }).then(response => {
+                                if (response.ok) {
+                                    // Determinar el formato correcto según el rol del usuario
+                                    let formato = 'formato_general';
+                                    if (usuarioObj && usuarioObj.rol) {
+                                        console.log('Dirigiendo según rol:', usuarioObj.rol);
+                                        if (usuarioObj.rol === 'UReg') {
+                                            formato = 'formato_registro';
+                                        } else if (usuarioObj.rol === 'UE') {
+                                            formato = 'formato_empaque';
+                                        } else {
+                                            formato = 'formato_general';
+                                        }
+                                    }
+                                    console.log(`Redirigiendo a: /${formato}/${loteSeleccionado.sku}`);
+                                    window.location.href = `/${formato}/${loteSeleccionado.sku}`;
+                                } else {
+                                    Swal.fire('Error', 'No se pudo seleccionar el SKU', 'error');
+                                }
+                            }).catch(error => {
+                                console.error('Error:', error);
+                                Swal.fire('Error', 'Problema de comunicación con el servidor', 'error');
+                            });
+                        });
+                    }
+                });
+            });
+
+            // Evento para el botón de cerrar sesión (usando la función del archivo cerrarsesion.js)
+            document.getElementById('logout-icon').addEventListener('click', function() {
+                if (typeof cerrarSesion === 'function') {
+                    cerrarSesion();
+                } else {
+                    // Fallback si no existe la función
+                    Swal.fire({
+                        title: '¿Cerrar sesión?',
+                        text: '¿Estás seguro de que deseas cerrar sesión?',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, cerrar sesión',
+                        cancelButtonText: 'Cancelar'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            localStorage.clear();
+                            window.location.href = '/';
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

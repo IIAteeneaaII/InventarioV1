@@ -1,0 +1,360 @@
+@use 'base/variables' as v;
+@use 'base/mixins' as m;
+
+.container_inicio {
+    padding: 1rem;
+
+    h1 {
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+        text-align: left;
+    }
+}
+
+#unread-count {
+    font-size: 12px;
+    padding: 3px 7px;
+    border-radius: 50%;
+}
+
+
+.day_number {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    .fecha {
+        font-size: 1rem;
+        font-weight: bold;
+    }
+    .fecha_num {
+        margin-top: 0.25rem;
+        padding: 0.3rem 0.75rem;
+        color: v.$white;
+        background-color: v.$mainColor-strong;
+        border-radius: 1rem;
+    }
+}
+.state {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;  
+    padding-left: 6rem;
+    p {
+        margin: 0;
+        font-weight: 500;
+    }
+    .emoji {
+        font-size: 1.5rem;
+    }
+}
+
+.day_state {
+    text-align: center;
+    display: flex;
+    flex-direction: row;
+    padding-bottom: 1rem;
+
+}
+
+.text-end {
+    text-align: center !important;
+}
+
+.calendar-day {
+    text-align: center;
+    font-size: 0.75rem;
+}
+
+.calendar-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin: 0 auto;
+    margin-top: 5px;
+}
+
+.calendar-dot.active {
+    border: 2px solid v.$black;
+}
+
+.icon-bar span {
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.btn-create {
+    border-radius: 20px;
+    padding: 6px 14px;
+    border: none;
+}
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 75%;
+    max-width: 300px;
+    height: 100vh;
+    background-color: v.$white;
+    z-index: 1052;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 1, 1);
+    transform: translateX(-100%);
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar.active {
+    transform: translateX(0);
+}
+
+.sidebar-content-bottom {
+    margin-top: 10rem;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.profile-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .profile-img {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid v.$mainColor-strong;
+    }
+
+    .username {
+        margin-top: 10px;
+        font-size: 1.2rem;
+        color: v.$mainColor-strong;
+    }
+}
+
+.menu-btn {
+    position: relative;
+    background-color: v.$white;
+    color: v.$black;
+    border: none;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    text-align: center;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+
+    i {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 1.2rem;
+        text-align: center;
+    }
+
+    &:hover {
+        color: v.$secondaryColor-strong;
+        // background-color: v.$mainColor-strong;
+    }
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    z-index: 1050;
+    display: none;
+}
+
+.overlay.active {
+    display: block;
+}
+
+.top-bar-inicio {
+    // background-color: v.$mainColor-low;
+    padding: 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.icons {
+    align-items: center;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
+}
+
+.iconos {
+    background-color: v.$white;
+    box-shadow: 0 0 1px v.$black;
+    border-radius: 0.2rem;
+    padding: 0.5rem;
+    // margin-left: 10px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+
+    i {
+        display: inline-block;
+        position: relative;
+
+        transition: transform 0.2s ease;
+    }
+
+    &:hover i {
+        transform: scale(1.1);
+    }
+}
+
+.top-bar-menu {
+    background-color: v.$secondaryColor;
+    padding: 0.75rem;
+    display: flex;
+    justify-content: space-between;
+
+    .icons i {
+        margin-left: 10px;
+        font-size: 1.2rem;
+    }
+}
+
+.logout-btn {
+    position: relative;
+    width: 100%;
+
+    i {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 1.2rem;
+        text-align: center;
+    }
+
+    &:hover {
+        color: darken(red, 10%);
+    }
+}
+
+.time-buttons {
+    text-align: center;
+
+    .btn {
+        margin: 0 0.25rem;
+        margin-bottom: 0.25rem;
+    }
+}
+
+.titulo {
+    text-align: center;
+    color: v.$black;
+    padding-top: 1rem;
+
+    // padding-bottom: 1rem;
+    h2 {
+        font-weight: 700;
+    }
+}
+
+.-toggle {
+    background-color: v.$white; // más suave
+    border-radius: 9999px;
+    display: inline-flex;
+    padding: 2px;
+    margin: 1rem auto;
+    position: relative;
+    justify-content: space-between;
+    gap: 22px;
+
+    .-tab {
+        background-color: v.$white;
+        position: relative;
+        // background-color: transparent;
+        border: none;
+        padding: 0.5rem 1.2rem;
+        border-radius: 9999px;
+        font-weight: 600;
+        color: v.$mainColor-strong; // gris medio
+        transition: all 0.3s ease;
+        cursor: pointer;
+        z-index: 1;
+
+        &:hover {
+            background-color: v.$mainColor-low;
+            color: v.$colorSecondaryBtn;
+            box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+        }
+
+        &:active {
+            background-color: v.$mainColor-low;
+            color: v.$secondaryColor-strong;
+            box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .badge {
+            background-color: v.$mainColor-strong;
+            color: white;
+            border-radius: 9999px;
+            padding: 2px 6px;
+            font-size: 0.65rem;
+            margin-left: 6px;
+        }
+    }
+}
+
+.-icon {
+    width: 40px;
+    height: 40px;
+    margin-right: 14px;
+    flex-shrink: 0;
+}
+
+.-card {
+    background-color: v.$white;
+    border-radius: 16px;
+    color: v.$black;
+    position: relative;
+    transition: box-shadow 0.3s;
+    cursor: pointer;
+}
+
+.check-circle {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid v.$black;
+    background-color: v.$white;
+    cursor: pointer;
+    display: none;
+    transition: background-color 0.3s, transform 0.2s;
+
+    &.complete {
+        background-color: v.$mainColor-low;
+    }
+
+    &.scale {
+        transform: scale(1.1);
+    }
+}
+
+.-value-badge {
+    background-color: v.$white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    // font-weight: 500;
+    margin-right: 14px;
+    font-size: 0.9rem;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}

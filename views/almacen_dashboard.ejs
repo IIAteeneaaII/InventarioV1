@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard de Almacén - Sistema de Inventario</title>
+  <%- include('partials/allStyles.ejs') %>
+  <link rel="stylesheet" href="/css/admin_dashboard.css">
+  <style>
+    body {
+      background-color: #f3f4f6;
+      margin: 0;
+      padding: 0;
+      padding-top: 70px; /* Espacio para el navbar fijo */
+    }
+    
+    .navbar {
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      background-color: #fff !important;
+      padding: 0.75rem 1.5rem;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1030;
+    }
+    
+    .navbar .nav-link {
+      font-weight: 500;
+      color: #475569;
+      padding: 0.5rem 1rem;
+    }
+    
+    .navbar .nav-link:hover {
+      color: #4e8c8f;
+    }
+    
+    .badge {
+      padding: 0.35rem 0.65rem;
+      font-weight: 500;
+      font-size: 0.75rem;
+    }
+    
+    .card {
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-bottom: 20px;
+      height: 100%;
+      border-radius: 18px;
+      border: none;
+      background-color: #fff;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+    }
+    
+    .card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+    }
+    
+    .card-body {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+      padding: 1.75rem 1.5rem;
+      text-align: center;
+    }
+    
+    .icon {
+      font-size: 2.4rem;
+      margin-bottom: 1.2rem;
+      color: #4e8c8f;
+      display: block;
+    }
+    
+    .card-title {
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      font-size: 1.2rem;
+    }
+    
+    .card-text {
+      color: var(--text-light);
+      margin-bottom: 1.25rem;
+      font-size: 0.95rem;
+    }
+    
+    .section-title {
+      position: relative;
+      padding-left: 1rem;
+      margin-bottom: 1.5rem;
+      margin-top: 2rem;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      display: flex;
+      align-items: center;
+    }
+    
+    .section-title::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background-color: #4e8c8f;
+      border-radius: 4px;
+    }
+    
+    .btn-access {
+      margin-top: 0.75rem;
+      border-radius: 18px;
+      padding: 0.5rem 1.5rem;
+      font-weight: 500;
+      font-size: 0.9rem;
+      letter-spacing: 0.5px;
+      width: 100%;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-access:hover {
+      transform: translateY(-2px);
+    }
+    
+    .btn-primary {
+      background-color: #4e8c8f;
+      border-color: #4e8c8f;
+    }
+    
+    .btn-primary:hover {
+      background-color: #66b3b7;
+      border-color: #66b3b7;
+    }
+    
+    .main-content {
+      background-color: #f5f8fa;
+      border-radius: 18px;
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.1);
+      clear: both;
+      overflow: hidden;
+    }
+    
+    .role-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 0.25rem 0.5rem;
+      border-radius: 50px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      background-color: #e6f7f8;
+      color: #4e8c8f;
+    }
+    
+    .dashboard-header {
+      background-color: #fff;
+      border-radius: 18px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+    }
+    
+    .stats-counter {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0;
+      color: #4e8c8f;
+    }
+    
+    .stats-label {
+      color: #6b7280;
+      font-size: 0.875rem;
+      margin-bottom: 0;
+    }
+    
+    /* Category-specific colors */
+    .process-card .icon { color: #4e8c8f; }
+    .admin-card .icon { color: #4e8c8f; }
+    .format-card .icon { color: #4e8c8f; }
+    .report-card .icon { color: #4e8c8f; }
+    
+    /* Estilos para tablas y grids */
+    .table {
+      width: 100%;
+      margin-bottom: 1rem;
+      color: #212529;
+      border-collapse: collapse;
+    }
+    
+    .table th {
+      padding: 0.75rem;
+      vertical-align: top;
+      border-top: 1px solid #dee2e6;
+      background-color: #f8f9fa;
+      font-weight: 600;
+    }
+    
+    .table td {
+      padding: 0.75rem;
+      vertical-align: top;
+      border-top: 1px solid #dee2e6;
+    }
+    
+    .table-responsive {
+      display: block;
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Ajuste para grid sistema */
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      margin-right: -12px;
+      margin-left: -12px;
+      clear: both;
+    }
+    
+    .col, .col-1, .col-2, .col-3, .col-4, .col-5, .col-6, .col-7, .col-8, .col-9, .col-10, .col-11, .col-12, 
+    .col-md-1, .col-md-2, .col-md-3, .col-md-4, .col-md-5, .col-md-6, .col-md-7, .col-md-8, .col-md-9, .col-md-10, .col-md-11, .col-md-12 {
+      position: relative;
+      width: 100%;
+      padding-right: 12px;
+      padding-left: 12px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">
+        <img src="/img/logo_ram.png" alt="Logo" height="30" class="d-inline-block align-top me-2">
+        <strong>Sistema de Inventario</strong>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link" href="/almacen"><i class="fas fa-home"></i> Inicio</a>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="processDropdown" role="button" 
+               data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fas fa-tasks"></i> Procesos
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="processDropdown">
+              <li><a class="dropdown-item" href="/seleccionlote">Selección de Lote</a></li>
+              <li><a class="dropdown-item" href="/registro">Registro</a></li>
+              <li><a class="dropdown-item" href="/empaque">Empaque</a></li>
+              <li><a class="dropdown-item" href="/scrap">Scrap</a></li>
+              <li><a class="dropdown-item" href="/testinicial">Test Inicial</a></li>
+              <li><a class="dropdown-item" href="/cosmetica">Cosmética</a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="formatsDropdown" role="button" 
+               data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fas fa-clipboard-list"></i> Formatos
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="formatsDropdown">
+              <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#formatoRegistroModal">Formato Registro</a></li>
+              <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#formatoGeneralModal">Formato General</a></li>
+              <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#formatoEmpaqueModal">Formato Empaque</a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="reportsDropdown" role="button" 
+               data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fas fa-chart-bar"></i> Informes
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="reportsDropdown">
+              <li><a class="dropdown-item" href="/resumen">Resumen General</a></li>
+              <li><a class="dropdown-item" href="/sku">Estadísticas por SKU</a></li>
+              <li><a class="dropdown-item" href="/historial">Historial</a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" 
+               data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fas fa-cogs"></i> Administración
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+              <li><a class="dropdown-item" href="/adminventario">Panel de Administración</a></li>
+              <li><a class="dropdown-item" href="/listarusuarios">Gestión de Usuarios</a></li>
+            </ul>
+          </li>
+        </ul>
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" 
+               data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fas fa-user"></i> <%= user.nombre %> <span class="badge bg-primary"><%= user.rol %></span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+              <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">
+                <i class="fas fa-sign-out-alt"></i> Cerrar sesión
+              </a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Contenedor principal con padding adecuado -->
+  <div class="container-fluid py-4">
+    <!-- Header del dashboard con margen adecuado -->
+    <div class="dashboard-header mb-4">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <h1 class="fw-bold mb-1">Dashboard de Almacén</h1>
+          <p class="text-muted mb-0">Bienvenido <%= user.nombre %> | <span class="badge bg-primary"><%= user.rol %></span></p>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <p class="mb-0"><i class="fas fa-calendar-day me-2"></i> <%= new Date().toLocaleDateString('es-MX', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) %></p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Dashboard Quick Stats -->
+    <div class="row mb-4">
+      <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div class="flex-shrink-0 bg-primary-light rounded-circle p-3 me-3">
+                <i class="fas fa-boxes text-primary"></i>
+              </div>
+              <div>
+                <h5 class="stats-counter">Almacén</h5>
+                <p class="stats-label">Panel Principal</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div class="flex-shrink-0 bg-success-light rounded-circle p-3 me-3">
+                <i class="fas fa-clipboard-check text-success"></i>
+              </div>
+              <div>
+                <h5 class="stats-counter">Acceso Total</h5>
+                <p class="stats-label">Todos los Módulos</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center h-100">
+              <div class="flex-shrink-0 me-3">
+                <i class="fas fa-info-circle text-info fa-2x"></i>
+              </div>
+              <div>
+                <h5 class="mb-1">Rol UA - Almacén</h5>
+                <p class="mb-0">Con este rol puede administrar y supervisar todo el proceso de inventario desde registro hasta empaque.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="main-content">
+      <div class="row mb-4">
+        <div class="col-12">
+          <h2 class="section-title">Procesos Principales</h2>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-3 col-sm-6 mb-4">
+          <div class="card process-card h-100">
+            <span class="role-badge">UA</span>
+            <div class="card-body text-center">
+              <i class="fas fa-clipboard-list icon"></i>
+              <h5 class="card-title">Selección de Lote</h5>
+              <p class="card-text">Accede a selección de lotes para iniciar el procesamiento de módems.</p>
+              <a href="/seleccionlote" class="btn btn-primary btn-access">Acceder</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-4">
+          <div class="card process-card h-100">
+            <span class="role-badge">UA, UReg</span>
+            <div class="card-body text-center">
+              <i class="fas fa-clipboard-check icon"></i>
+              <h5 class="card-title">Registro</h5>
+              <p class="card-text">Registro inicial de módems en el sistema.</p>
+              <a href="/registro" class="btn btn-primary btn-access">Acceder</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-4">
+          <div class="card process-card h-100">
+            <span class="role-badge">UA, UE</span>
+            <div class="card-body text-center">
+              <i class="fas fa-box icon"></i>
+              <h5 class="card-title">Empaque</h5>
+              <p class="card-text">Gestión de empaque de módems procesados.</p>
+              <a href="/empaque" class="btn btn-primary btn-access">Acceder</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-4">
+          <div class="card process-card h-100">
+            <span class="role-badge">UA, UE</span>
+            <div class="card-body text-center">
+              <i class="fas fa-trash-alt icon"></i>
+              <h5 class="card-title">Scrap</h5>
+              <p class="card-text">Gestión de módems descartados.</p>
+              <a href="/scrap" class="btn btn-primary btn-access">Acceder</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-4">
+          <div class="card process-card h-100">
+            <span class="role-badge">UA, UTI</span>
+            <div class="card-body text-center">
+              <i class="fas fa-tools icon"></i>
+              <h5 class="card-title">Test Inicial</h5>
+              <p class="card-text">Acceso a pruebas iniciales de módems.</p>
+              <a href="/testinicial" class="btn btn-primary btn-access">Acceder</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-4">
+          <div class="card process-card h-100">
+            <span class="role-badge">UA, UC</span>
+            <div class="card-body text-center">
+              <i class="fas fa-magic icon"></i>
+              <h5 class="card-title">Cosmética</h5>
+              <p class="card-text">Gestión de cosmética de productos.</p>
+              <a href="/cosmetica" class="btn btn-primary btn-access">Acceder</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="main-content">
+      <div class="row mb-4">
+        <div class="col-12">
+          <h2 class="section-title">Administración y Reportes</h2>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-3 col-sm-6 mb-4">
+          <div class="card admin-card h-100">
+            <span class="role-badge">UA, UAI</span>
+            <div class="card-body text-center">
+              <i class="fas fa-users-cog icon"></i>
+              <h5 class="card-title">Administración</h5>
+              <p class="card-text">Acceso al panel de administración del sistema.</p>
+              <a href="/adminventario" class="btn btn-primary btn-access">Acceder</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-4">
+          <div class="card admin-card h-100">
+            <span class="role-badge">UA, UAI</span>
+            <div class="card-body text-center">
+              <i class="fas fa-user-plus icon"></i>
+              <h5 class="card-title">Gestión de Usuarios</h5>
+              <p class="card-text">Administra los usuarios del sistema.</p>
+              <a href="/listarusuarios" class="btn btn-primary btn-access">Acceder</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-4">
+          <div class="card report-card h-100">
+            <span class="role-badge">UA, UAI</span>
+            <div class="card-body text-center">
+              <i class="fas fa-chart-bar icon"></i>
+              <h5 class="card-title">Resumen</h5>
+              <p class="card-text">Visualiza el resumen y estadísticas del inventario.</p>
+              <a href="/resumen" class="btn btn-primary btn-access">Acceder</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-4">
+          <div class="card report-card h-100">
+            <span class="role-badge">UA, UAI</span>
+            <div class="card-body text-center">
+              <i class="fas fa-chart-pie icon"></i>
+              <h5 class="card-title">Estadísticas por SKU</h5>
+              <p class="card-text">Visualiza estadísticas detalladas por SKU.</p>
+            <a href="/sku" class="btn btn-primary btn-access">Acceder</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="row mt-4">
+      <div class="col-md-3 col-sm-6">
+        <div class="card report-card">
+          <span class="role-badge">UA, UAI, UV</span>
+          <div class="card-body text-center">
+            <i class="fas fa-search icon"></i>
+            <h5 class="card-title">Buscar por NS</h5>
+            <p class="card-text">Busca módems por número de serie.</p>
+            <a href="/ns" class="btn btn-primary btn-access">Acceder</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 col-sm-6">
+        <div class="card report-card">
+          <span class="role-badge">UA, UAI, UV</span>
+          <div class="card-body text-center">
+            <i class="fas fa-history icon"></i>
+            <h5 class="card-title">Historial</h5>
+            <p class="card-text">Consulta el historial de acciones y cambios.</p>
+            <a href="/historial" class="btn btn-primary btn-access">Acceder</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+    
+    <div class="main-content">
+      <div class="row mb-4">
+        <div class="col-12">
+          <h2 class="section-title">Formatos de Captura</h2>
+        </div>
+      </div>
+    <div class="row">
+      <div class="col-md-4 col-sm-6">
+        <div class="card format-card">
+          <span class="role-badge">UA, UReg</span>
+          <div class="card-body text-center">
+            <i class="fas fa-clipboard-list icon"></i>
+            <h5 class="card-title">Formato Registro</h5>
+            <p class="card-text">Formatos para el registro inicial de módems.</p>
+            <div class="d-grid gap-2">
+              <button type="button" class="btn btn-success btn-access" data-bs-toggle="modal" data-bs-target="#formatoRegistroModal">
+                Seleccionar SKU
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6 mb-4">
+        <div class="card format-card h-100">
+          <span class="role-badge">UA, UTI, UEN, UR</span>
+          <div class="card-body text-center">
+            <i class="fas fa-cogs icon"></i>
+            <h5 class="card-title">Formato General</h5>
+            <p class="card-text">Formatos para test inicial, ensamble y retest.</p>
+            <div class="d-grid gap-2">
+              <button type="button" class="btn btn-success btn-access" data-bs-toggle="modal" data-bs-target="#formatoGeneralModal">
+                Seleccionar SKU
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6 mb-4">
+        <div class="card format-card h-100">
+          <span class="role-badge">UA, UE</span>
+          <div class="card-body text-center">
+            <i class="fas fa-box-open icon"></i>
+            <h5 class="card-title">Formato Empaque</h5>
+            <p class="card-text">Formatos para la fase final de empaque.</p>
+            <div class="d-grid gap-2">
+              <button type="button" class="btn btn-success btn-access" data-bs-toggle="modal" data-bs-target="#formatoEmpaqueModal">
+                Seleccionar SKU
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+    
+    <!-- Removed redundant Consultas y Visualización section as it's now part of the admin section -->
+  </div>
+
+  <!-- Modal de Cierre de Sesión -->
+  <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title" id="logoutModalLabel">
+            <i class="fas fa-sign-out-alt me-2"></i> Cerrar sesión
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center py-4">
+          <p class="mb-0">¿Estás seguro de que quieres cerrar sesión?</p>
+        </div>
+        <div class="modal-footer justify-content-center">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-danger" id="confirmLogout">
+            <i class="fas fa-sign-out-alt me-1"></i> Cerrar sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%- include('partials/allScripts.ejs') %>
+  <script>
+    document.getElementById('confirmLogout').addEventListener('click', function() {
+      fetch('/logout', {
+        method: 'POST',
+        credentials: 'same-origin'
+      })
+      .then(response => {
+        if (response.ok) {
+          window.location.href = '/';
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+      });
+    });
+  </script>
+
+  <!-- Modal para seleccionar SKU de Formato Registro -->
+  <div class="modal fade" id="formatoRegistroModal" tabindex="-1" aria-labelledby="formatoRegistroModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header" style="background-color: #4e8c8f; color: white;">
+          <h5 class="modal-title" id="formatoRegistroModalLabel">
+            <i class="fas fa-clipboard-list me-2"></i> Formato Registro
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i> Selecciona un SKU para acceder al formato de registro correspondiente.
+          </div>
+          <div class="mb-3">
+            <label for="skuRegistroSelect" class="form-label">Selecciona un SKU:</label>
+            <select class="form-select form-select-lg" id="skuRegistroSelect">
+              <option value="" selected disabled>Cargando SKUs...</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btnAccederRegistro">
+            <i class="fas fa-arrow-right me-1"></i> Acceder al formato
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para seleccionar SKU de Formato General -->
+  <div class="modal fade" id="formatoGeneralModal" tabindex="-1" aria-labelledby="formatoGeneralModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header" style="background-color: #4e8c8f; color: white;">
+          <h5 class="modal-title" id="formatoGeneralModalLabel">
+            <i class="fas fa-cogs me-2"></i> Formato General
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i> Selecciona un SKU para acceder al formato general correspondiente.
+          </div>
+          <div class="mb-3">
+            <label for="skuGeneralSelect" class="form-label">Selecciona un SKU:</label>
+            <select class="form-select form-select-lg" id="skuGeneralSelect">
+              <option value="" selected disabled>Cargando SKUs...</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btnAccederGeneral">
+            <i class="fas fa-arrow-right me-1"></i> Acceder al formato
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para seleccionar SKU de Formato Empaque -->
+  <div class="modal fade" id="formatoEmpaqueModal" tabindex="-1" aria-labelledby="formatoEmpaqueModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header" style="background-color: #4e8c8f; color: white;">
+          <h5 class="modal-title" id="formatoEmpaqueModalLabel">
+            <i class="fas fa-box-open me-2"></i> Formato Empaque
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i> Selecciona un SKU para acceder al formato de empaque correspondiente.
+          </div>
+          <div class="mb-3">
+            <label for="skuEmpaqueSelect" class="form-label">Selecciona un SKU:</label>
+            <select class="form-select form-select-lg" id="skuEmpaqueSelect">
+              <option value="" selected disabled>Cargando SKUs...</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btnAccederEmpaque">
+            <i class="fas fa-arrow-right me-1"></i> Acceder al formato
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Función para cargar los SKUs disponibles en todos los selectores
+    function cargarSKUs() {
+      fetch('/api/catalogos/skus')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Error al obtener los SKUs');
+          }
+          return response.json();
+        })
+        .then(skus => {
+          const selectores = ['skuRegistroSelect', 'skuGeneralSelect', 'skuEmpaqueSelect'];
+          
+          selectores.forEach(selectorId => {
+            const select = document.getElementById(selectorId);
+            select.innerHTML = '<option value="" selected disabled>Selecciona un SKU</option>';
+            
+            skus.forEach(sku => {
+              const option = document.createElement('option');
+              option.value = sku.nombre;
+              option.textContent = `${sku.nombre}${sku.skuItem ? ' - ' + sku.skuItem : ''}`;
+              select.appendChild(option);
+            });
+          });
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          const selectores = ['skuRegistroSelect', 'skuGeneralSelect', 'skuEmpaqueSelect'];
+          selectores.forEach(selectorId => {
+            document.getElementById(selectorId).innerHTML = 
+              '<option value="" selected disabled>Error al cargar SKUs</option>';
+          });
+        });
+    }
+
+    // Configurar los botones de acceso a formatos
+    document.getElementById('btnAccederRegistro').addEventListener('click', function() {
+      const skuSelect = document.getElementById('skuRegistroSelect');
+      if (skuSelect.value) {
+        window.location.href = `/formato_registro/${skuSelect.value}`;
+      } else {
+        alert('Por favor selecciona un SKU');
+      }
+    });
+
+    document.getElementById('btnAccederGeneral').addEventListener('click', function() {
+      const skuSelect = document.getElementById('skuGeneralSelect');
+      if (skuSelect.value) {
+        window.location.href = `/formato_general/${skuSelect.value}`;
+      } else {
+        alert('Por favor selecciona un SKU');
+      }
+    });
+
+    document.getElementById('btnAccederEmpaque').addEventListener('click', function() {
+      const skuSelect = document.getElementById('skuEmpaqueSelect');
+      if (skuSelect.value) {
+        window.location.href = `/formato_empaque/${skuSelect.value}`;
+      } else {
+        alert('Por favor selecciona un SKU');
+      }
+    });
+
+    // Cargar los SKUs cuando se abren los modales
+    const modales = [
+      document.getElementById('formatoRegistroModal'),
+      document.getElementById('formatoGeneralModal'),
+      document.getElementById('formatoEmpaqueModal')
+    ];
+
+    modales.forEach(modal => {
+      modal.addEventListener('show.bs.modal', function() {
+        cargarSKUs();
+      });
+    });
+  </script>
+  
+  <%- include('partials/allScripts.ejs') %>
+</body>
+</html>

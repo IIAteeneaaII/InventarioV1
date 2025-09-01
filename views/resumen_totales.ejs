@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Resumen de Totales</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <link rel="stylesheet" href="/css/charts.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Estilos adicionales para errores */
+    .error-banner {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      border-radius: 5px;
+      padding: 8px 15px;
+      margin-top: 15px;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .loading-indicator {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      color: #666;
+    }
+    
+    .loading-indicator i {
+      font-size: 24px;
+      margin-bottom: 10px;
+      color: #1a9ad7;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-container">
+    <!-- Panel lateral izquierdo -->
+    <div class="sidebar">
+      <h1>Resumen</h1>
+      <h2>Totales</h2>
+      
+      <button id="REGRESAR" class="btn">Inicio</button>
+      <button id="actualizarDatos" class="btn btn-refresh">
+        <i class="fas fa-sync-alt"></i> Actualizar datos
+      </button>
+      
+      <select id="rangoDias" class="form-control">
+        <option value="7">Últimos 7 días</option>
+        <option value="30" selected>Últimos 30 días</option>
+        <option value="90">Últimos 90 días</option>
+        <option value="365">Último año</option>
+      </select>
+      
+      <!-- Selector de SKU -->
+      <div class="selector-container">
+        <label for="skuSelector">Filtrar por SKU:</label>
+        <select id="skuSelector" class="form-control" title="Selecciona un SKU para filtrar los datos - La página se actualizará automáticamente">
+          <option value="todos" selected>Todos los SKUs</option>
+          <!-- Opciones se cargarán dinámicamente -->
+        </select>
+        <small class="selector-hint">La selección actualizará los datos automáticamente</small>
+      </div>
+    </div>
+    
+    <!-- Panel principal -->
+    <main class="main-content">
+      <!-- Contador total -->
+      <div class="total-counter">
+        <div class="counter-label">Total de modems registrados</div>
+        <div class="counter-value" id="total-modems-count">Cargando...</div>
+      </div>
+      
+      <!-- Gráficas -->
+      <div class="charts-grid">
+        <!-- Gráfica de distribución por SKU -->
+        <div class="chart-section">
+          <div class="chart-header">
+            <i class="fas fa-chart-pie"></i> Distribución por SKU
+          </div>
+          <div class="chart-container">
+            <canvas id="chartSKU" width="400" height="300"></canvas>
+          </div>
+        </div>
+        
+        <!-- Gráfica de modems registrados por día -->
+        <div class="chart-section">
+          <div class="chart-header">
+            <i class="fas fa-chart-line"></i> Modems registrados por día
+          </div>
+          <div class="chart-container">
+            <canvas id="chartDiario" width="400" height="300"></canvas>
+          </div>
+        </div>
+        
+        <!-- NUEVA GRÁFICA: Etapas del Proceso -->
+        <div class="chart-section">
+          <div class="chart-header">
+            <i class="fas fa-tasks"></i> Etapas del Proceso
+          </div>
+          <div class="chart-container">
+            <canvas id="chartEtapas" width="400" height="300"></canvas>
+          </div>
+        </div>
+        
+        <!-- Gráfica de estado por fase -->
+        <div class="chart-section">
+          <div class="chart-header">
+            <i class="fas fa-th"></i> Estado por Fase de Proceso
+          </div>
+          <div class="chart-container">
+            <canvas id="chartFase" width="400" height="300"></canvas>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Script inicial para mostrar indicadores de carga
+    document.addEventListener('DOMContentLoaded', function() {
+      // Mostrar indicadores de carga en cada contenedor de gráfica
+      document.querySelectorAll('.chart-container').forEach(container => {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading-indicator';
+        loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i><p>Preparando gráfica...</p>';
+        
+        // Agregar después del canvas
+        const canvas = container.querySelector('canvas');
+        if (canvas) {
+          canvas.after(loadingDiv);
+        }
+      });
+    });
+  </script>
+  
+  <!-- Script para las gráficas -->
+  <script src="/js/dashboard-charts.js"></script>
+</body>
+</html>

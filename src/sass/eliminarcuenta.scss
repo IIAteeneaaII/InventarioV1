@@ -1,0 +1,11 @@
+@use 'base/variables' as v;
+@use 'base/mixins' as m;
+
+.botones-eliminar{
+    text-align: center;
+}
+
+.texto-eliminar{
+    font-family: v.$text;
+    color: v.$black;
+}

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selección de Lote Existente</title>
+    <link rel="stylesheet" href="/css/menu_modelos.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h2>Selección de Modelo</h2>
+            <div class="user-profile">
+                <img src="usuario.webp" alt="Usuario" class="user-avatar">
+                <span id="username-display" class="user-name">Usuario</span>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="lotes-container">
+                <!-- Barra de búsqueda -->
+                <div class="search-bar">
+                     <input type="text" id="buscar-lote" class="search-input" placeholder="Buscar por SKU o nombre...">
+                </div>
+
+
+                <!-- Tabla de lotes -->
+                <div class="table-container">
+                    <table class="lotes-table">
+                        <thead>
+                            <tr>
+                                <th>SKU</th>
+                                <th> Nombre del Producto</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-lotes">
+                            <!-- Las filas se generan dinámicamente con JavaScript -->
+                        </tbody>
+                    </table>
+                    <div id="no-results" class="no-results" style="display: none;">
+                        <i class="fas fa-search-minus"></i>
+                        <p>No se encontraron resultados para tu búsqueda</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div class="actions-bar">
+            <button id="volver-btn" class="btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver
+            </button>
+            <button id="confirmar-seleccion-btn" class="btn-primary" disabled>
+                <i class="fas fa-check-circle"></i> Confirmar Selección
+            </button>
+        </div>
+        
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Cargar usuario
+            const usuario = localStorage.getItem('usuarioActual') || 'Usuario';
+            document.getElementById('username-display').textContent = usuario;
+
+            // Datos de SKU-Nombre
+            const skus = {
+                '69746': '4K M37',
+                '68360': '4K M36 Blanco',
+                '81809': '4K M36 Azul',
+                '72608': 'Extender AP',
+                '67278': 'Extender HUAWEI',
+                '80333': 'AP EH7',
+                '72488': '4K Alexa',
+                '72676': 'V5 Small',
+                '66262': 'V5',
+                '69643': 'Fiberhome',
+                '69644': 'ZTE',
+                '76735': 'X6',
+                '74487': 'Fiberhome Extender',
+                '69358': 'Soundbox'
+            };
+
+                // Variables para controlar la selección
+                let loteSeleccionado = null;
+                const confirmarBtn = document.getElementById('confirmar-seleccion-btn');
+                const tablaLotes = document.getElementById('tabla-lotes');
+                const buscarInput = document.getElementById('buscar-lote');
+                const noResults = document.getElementById('no-results');
+
+
+            // Función para renderizar los SKUs en la tabla
+            function renderizarSKUs(data) {
+                tablaLotes.innerHTML = '';
+                
+                if (Object.keys(data).length === 0) {
+                    noResults.style.display = 'block';
+                    return;
+                }
+                
+                noResults.style.display = 'none';
+                
+                for (const [sku, nombre] of Object.entries(data)) {
+                    const fila = document.createElement('tr');
+                    fila.dataset.sku = sku;
+                    fila.dataset.nombre = nombre;
+                    
+                    fila.innerHTML = `
+                        <td><span class="sku-tag">${sku}</span></td>
+                        <td>${nombre}</td>
+                    `;
+                    
+                    fila.addEventListener('click', function() {
+                        // Quitar selección de otras filas
+                        document.querySelectorAll('#tabla-lotes tr').forEach(row => {
+                            row.classList.remove('selected-row');
+                        });
+                        
+                        // Seleccionar esta fila
+                        this.classList.add('selected-row');
+                        
+                        // Guardar selección
+                        loteSeleccionado = {
+                            sku: this.dataset.sku,
+                            nombre: this.dataset.nombre
+                        };
+                        
+                        // Habilitar botón de confirmar
+                        confirmarBtn.disabled = false;
+                        
+                        // Animación de selección
+                        this.style.transform = "scale(1.01)";
+                        setTimeout(() => {
+                            this.style.transform = "scale(1)";
+                        }, 200);
+                    });
+                    
+                    tablaLotes.appendChild(fila);
+                }
+            }
+
+            // Renderizar todos los SKUs inicialmente
+            renderizarSKUs(skus);
+
+            // Función de búsqueda
+            function buscarSKUs(termino) {
+                termino = termino.toLowerCase().trim();
+                
+                if (!termino) {
+                    return skus;
+                }
+                
+                const resultados = {};
+                
+                for (const [sku, nombre] of Object.entries(skus)) {
+                    // CORRECCIÓN: Se agregó el paréntesis de cierre que faltaba
+                    if (sku.toLowerCase().includes(termino)) {
+                        resultados[sku] = nombre;
+                    } else if (nombre.toLowerCase().includes(termino)) {
+                        resultados[sku] = nombre;
+                    }
+                }
+                
+                return resultados;
+            }
+
+                // Evento de búsqueda al escribir
+                buscarInput.addEventListener('input', function() {
+                const termino = this.value;
+                const resultados = buscarSKUs(termino);
+                renderizarSKUs(resultados);
+                });
+
+            // Manejar confirmación final
+            confirmarBtn.addEventListener('click', function() {
+                if (!loteSeleccionado) return;
+                
+                Swal.fire({
+                    title: 'Confirmar Selección',
+                    html: `¿Estás seguro de seleccionar el producto?<br><br>
+                           <b>SKU:</b> ${loteSeleccionado.sku}<br>
+                           <b>Nombre:</b> ${loteSeleccionado.nombre}`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, confirmar',
+                    cancelButtonText: 'Cancelar',
+                    customClass: {
+                        confirmButton: 'swal2-confirm',
+                        cancelButton: 'swal2-cancel'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Guardar selección en localStorage
+                        localStorage.setItem('loteSeleccionado', JSON.stringify(loteSeleccionado));
+                        
+                        Swal.fire({
+                            title: '¡Selección Confirmada!',
+                            html: `<div style="text-align: center;">
+                                   <i class="fas fa-check-circle" style="font-size: 4rem; color: #27ae60;"></i>
+                                   <p style="font-size: 1.4rem; margin-top: 1rem;">SKU <b>${loteSeleccionado.sku}</b> (${loteSeleccionado.nombre})<br>confirmado correctamente</p>
+                                   </div>`,
+                            icon: 'success',
+                            confirmButtonText: 'Continuar',
+                            customClass: {
+                                confirmButton: 'swal2-confirm'
+                            }
+                        }).then(() => {
+                            // Redirigir a la siguiente pantalla
+                            // window.location.href = 'siguiente-paso.html';
+                        });
+                    }
+                });
+            });
+
+            // Funcion para boton volver
+            document.getElementById('volver-btn').addEventListener('click', function() {
+                window.history.back();
+            });
+        });
+    </script>
+</body>
+</html>

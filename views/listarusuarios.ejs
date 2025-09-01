@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel Administrador - Editar Usuarios</title>
+  <link rel="stylesheet" href="/css/admin_dashboard.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+</head>
+<body>
+  <div class="admin-container">
+    <!-- ✅ Header corregido con estructura clara -->
+    <div class="user-header">
+      <div>
+        <h1>Editar usuarios</h1>
+        <p>Gestión y edición de usuarios del sistema</p>
+      </div>
+      <div class="user-info">
+        <div class="user-icon">A</div>
+        <button class="btn btn-primary" onclick="window.location.href='/adminventario'">
+          <i class="fas fa-arrow-left"></i> Inicio  
+        </button>
+      </div>
+    </div>
+
+    <!-- ✅ Sección principal con contenedor apropiado -->
+    <section class="main-content">
+      <div class="buscador-row">
+        <div class="busqueda-input-wrap">
+          <input type="text" id="buscadorUsuario" class="input-busqueda" placeholder="Buscar usuario por nombre, email o usuario..." />
+          <button type="button" class="btn btn-secondary btn-busqueda-limpiar" onclick="resetBusqueda()">
+            <i class="fas fa-times"></i> Borrar
+          </button>
+        </div>
+        <select id="filtroRol" class="input-select">
+          <option value="">Todas las áreas</option>
+          <option value="UAI">Administrador Inventario</option>
+          <option value="UA">Usuario Almacén</option>
+          <option value="UV">Visualizador</option>
+          <option value="UReg">Registro</option>
+          <option value="UTI">Test Inicial</option>
+          <option value="UR">Re-Test</option>
+          <option value="UC">Calidad</option>
+          <option value="UE">Empaque</option>
+          <option value="ULL">Liberación/Limpieza</option>
+        </select>
+      </div>
+      
+      <div class="table-container">
+        <table class="usuarios-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Usuario</th>
+              <th>Email</th>
+              <th>Área</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="usuariosTableBody">
+            <% if (typeof usuarios !== 'undefined' && usuarios.length > 0) { %>
+              <% usuarios.forEach(usuario => { %>
+                <tr data-nombre="<%= usuario.nombre.toLowerCase() %>"
+                    data-username="<%= usuario.userName.toLowerCase() %>"
+                    data-email="<%= usuario.email.toLowerCase() %>"
+                    data-rol="<%= usuario.rol %>">
+                  <td><%= usuario.nombre %></td>
+                  <td><%= usuario.userName %></td>
+                  <td><%= usuario.email %></td>
+                  <td>
+                    <%= usuario.rol === 'UAI' ? 'Administrador Inventario'
+                      : usuario.rol === 'UA' ? 'Usuario Almacén'
+                      : usuario.rol === 'UV' ? 'Visualizador'
+                      : usuario.rol === 'UReg' ? 'Registro'
+                      : usuario.rol === 'UTI' ? 'Test Inicial'
+                      : usuario.rol === 'UR' ? 'Re-Test'
+                      : usuario.rol === 'UC' ? 'Calidad'
+                      : usuario.rol === 'UE' ? 'Empaque'
+                      : usuario.rol === 'ULL' ? 'Liberación/Limpieza'
+                      : usuario.rol %>
+                  </td>
+                  <td class="acciones-cell">
+                    <a href="/editarusuario/<%= usuario.id %>" class="btn btn-secondary btn-editar-link" title="Editar">
+                      <i class="fas fa-edit"></i>
+                    </a>
+                    
+                    <label class="switch-toggle" title="Activar/Desactivar cuenta">
+                      <input 
+                        type="checkbox" 
+                        class="toggle-activo" 
+                        data-id="<%= usuario.id %>" 
+                        <%= usuario.activo ? 'checked' : '' %>
+                      />
+                      <span class="slider-toggle"></span>
+                    </label>
+                    <span class="estado-texto"><%= usuario.activo ? "Activo" : "Inactivo" %></span>
+                  </td>
+                </tr>
+              <% }); %>
+            <% } else { %>
+              <tr>
+                <td colspan="5">No hay usuarios registrados.</td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="paginador-row">
+        <button id="anteriorPag" class="btn btn-secondary"><i class="fas fa-arrow-left"></i></button>
+        <span id="paginaActual">1</span>
+        <button id="siguientePag" class="btn btn-secondary"><i class="fas fa-arrow-right"></i></button>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/just-validate@4.3.0/dist/just-validate.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="/js/swalConfig.js"></script>
+  <script src="/js/cerrarsesion.js"></script>
+  <script src="/js/admin.js"></script>
+  
+  <script>
+    // --- Constantes para paginación y filtros
+    const filasPorPagina = 10;
+    let paginaActual = 1;
+    let usuarios = [];
+    
+    // Cargar los usuarios del backend (la variable EJS "usuarios")
+    <% if (typeof usuarios !== 'undefined') { %>
+      usuarios = <%- JSON.stringify(usuarios) %>;
+    <% } %>
+    
+    let usuariosFiltrados = usuarios;
+
+    // --- Renderizar tabla paginada
+    function renderTabla() {
+      const tbody = document.getElementById('usuariosTableBody');
+      tbody.innerHTML = '';
+      const inicio = (paginaActual - 1) * filasPorPagina;
+      const fin = inicio + filasPorPagina;
+      const pagina = usuariosFiltrados.slice(inicio, fin);
+      
+      if (pagina.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5">No hay usuarios registrados.</td></tr>`;
+        return;
+      }
+      
+      pagina.forEach(usuario => {
+        tbody.innerHTML += `
+          <tr data-nombre="${usuario.nombre.toLowerCase()}"
+              data-username="${usuario.userName.toLowerCase()}"
+              data-email="${usuario.email.toLowerCase()}"
+              data-rol="${usuario.rol}">
+            <td>${usuario.nombre}</td>
+            <td>${usuario.userName}</td>
+            <td>${usuario.email}</td>
+            <td>${rolCompleto(usuario.rol)}</td>
+            <td class="acciones-cell">
+              <a href="/editarusuario/${usuario.id}" class="btn btn-secondary btn-editar-link" title="Editar">
+                <i class="fas fa-edit"></i>
+              </a>
+              
+              <label class="switch-toggle" title="Activar/Desactivar cuenta">
+                <input 
+                  type="checkbox" 
+                  class="toggle-activo" 
+                  data-id="${usuario.id}" 
+                  ${usuario.activo ? 'checked' : ''}
+                />
+                <span class="slider-toggle"></span>
+              </label>
+              <span class="estado-texto">${usuario.activo ? 'Activo' : 'Inactivo'}</span>
+            </td>
+          </tr>
+        `;
+      });
+      document.getElementById('paginaActual').textContent = paginaActual;
+    }
+
+    function rolCompleto(rol) {
+      switch(rol) {
+        case 'UAI': return 'Administrador Inventario';
+        case 'UA': return 'Usuario Almacén';
+        case 'UV': return 'Visualizador';
+        case 'UReg': return 'Registro';
+        case 'UTI': return 'Test Inicial';
+        case 'UR': return 'Re-Test';
+        case 'UC': return 'Calidad';
+        case 'UE': return 'Empaque';
+        case 'ULL': return 'Liberación/Limpieza';
+        default: return rol;
+      }
+    }
+
+    // --- Filtro buscador y por área
+    document.getElementById('buscadorUsuario').addEventListener('input', aplicarFiltros);
+    document.getElementById('filtroRol').addEventListener('change', aplicarFiltros);
+
+    function aplicarFiltros() {
+      const texto = document.getElementById('buscadorUsuario').value.toLowerCase();
+      const rol = document.getElementById('filtroRol').value;
+      usuariosFiltrados = usuarios.filter(u => (
+        (u.nombre.toLowerCase().includes(texto) ||
+        u.userName.toLowerCase().includes(texto) ||
+        u.email.toLowerCase().includes(texto)) &&
+        (rol === '' || u.rol === rol)
+      ));
+      paginaActual = 1;
+      renderTabla();
+    }
+
+    function resetBusqueda() {
+      document.getElementById('buscadorUsuario').value = '';
+      document.getElementById('filtroRol').value = '';
+      aplicarFiltros();
+    }
+
+    // --- Paginador
+    document.getElementById('anteriorPag').addEventListener('click', () => {
+      if (paginaActual > 1) {
+        paginaActual--;
+        renderTabla();
+      }
+    });
+    
+    document.getElementById('siguientePag').addEventListener('click', () => {
+      if (paginaActual < Math.ceil(usuariosFiltrados.length / filasPorPagina)) {
+        paginaActual++;
+        renderTabla();
+      }
+    });
+
+    // ✅ Event listener para toggles de estado activo
+    document.addEventListener('change', function(e) {
+      if (e.target.classList.contains('toggle-activo')) {
+        const userId = e.target.getAttribute('data-id');
+        const isActive = e.target.checked;
+        
+        // Aquí puedes hacer la llamada AJAX para actualizar el estado
+        console.log(`Usuario ${userId} cambiado a: ${isActive ? 'activo' : 'inactivo'}`);
+        
+        // Actualizar el texto del estado
+        const estadoTexto = e.target.closest('td').querySelector('.estado-texto');
+        estadoTexto.textContent = isActive ? 'Activo' : 'Inactivo';
+      }
+    });
+
+    // Inicializar tabla en primer render
+    document.addEventListener('DOMContentLoaded', function() {
+      renderTabla();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAPTURA NUMEROS DE SERIE</title>
+    <link rel="stylesheet" href="/css/formatoD.css" />    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="/js/sweetalert-controller.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sección del formulario -->
+<div class="top-right">
+  <img src="/img/usuario.webp" alt="Usuario" class="user-icon" />
+  <div class="username" id="username-display"><%= user.userName %></div>
+  <div class="user-info">
+    <div class="logout-container">
+      <i class="fas fa-right-from-bracket logout-icon" id="logout-icon" title="Cerrar sesión"></i>
+    </div>
+  </div>
+</div>
+        <div class="form-section">
+            <h1>ZTE - 69644</h1>
+            <div class="form-group">
+                <label>Escanear:</label>
+            </div>
+            
+            <div class="form-group">
+                <label class="required">S/N</label>
+                <input type="text" id="sn-input" placeholder="Ingrese el número de serie">
+            </div>
+            
+            <div class="form-group">
+                <label>Reparaciones</label>
+                <input type="text" id="reparaciones-input" placeholder="Ingrese código de reparación">
+            </div>
+            
+
+            
+            <div class="form-group">
+<input type="text" id="scrap-input" name="scrap" hidden />
+                <label class="required">Diagnostico</label>                
+                <select id="motivo-scrap">
+                    <option value="">Seleccione un Diagnostico</option>
+                    <option value="Se Pasma">D03</option>
+                    <option value="Conectores">D014</option>
+                    <option value="Sin Conexion GPON (LOS)">D015</option>
+                    <option value="Sin Wifi">D017</option>
+                    <option value="Antena Dañada">D022</option>
+                    <option value="Botones Dañados">D023</option>
+                    <option value="Indicadores Led Dañados">D024</option>
+                </select>
+            </div>
+            <div class="form-group">
+<input type="text" id="scrap-input" name="scrap" hidden />
+                <label class="required">Nivel</label>                
+                <select id="motivo-scrap">
+                    <option value="">Seleccione Descripción de Nivel</option>
+                    <option value="Cambio de Conectores">N1</option>
+                    <option value="Reparación a Nivel Componente TH">N2</option>
+                    <option value="Reparación a Nivel Componente SMT">N2+</option>
+                </select>
+            </div>
+            <!-- Botón de guardado con el ID correcto -->
+            <button class="btn-confirmar" id="guardar-btn">
+            <i class="fas fa-save"></i> GUARDAR REGISTRO
+            </button>
+            <div class="status-indicator"><span class="ready">Listo para escanear</span></div>
+
+
+            <button id="volver-btn" class="btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver
+            </button>
+            <button class="btn-completar" id="finalizar-lote-btn" style="display: none;">
+                <i class="fas fa-check-double"></i> FINALIZAR LOTE
+            </button>
+            
+        </div>
+        
+        <!-- Sección de la tabla -->
+        <div class="table-section">
+            <h1>Historial de Registros</h1>
+            
+            <div class="table-container">
+                <table class="registros-table">
+                    <thead>
+                        <tr>
+                            <th>ID (Usuario)</th>
+                            <th>N/S</th>
+                            <th>Fecha</th>
+                            <th>Registro</th>
+                            <th>Diagnostico</th>
+                            <th>Descripción Diagnostico</th>
+                            <th>Reparación</th>
+                            <th>Descripción Reparación</th>
+                            <th>Nivel</th>
+                            <th>Descripción Nivel</th>
+                        </tr>
+                    </thead>
+                    <tbody id="registros-body">
+                        <!-- El historial de registros se carga aquí desde el backend -->
+                        <% if (typeof registros !== 'undefined' && registros.length > 0) { %>
+                          <% registros.forEach(registro => { %>
+                            <tr class="<%= registro.estado.includes('SCRAP') ? 'fila-scrap' : '' %>">
+                              <td><%= registro.user.nombre %></td>
+                              <td><%= registro.sn %></td>
+                              <td><%= new Date(registro.createdAt).toLocaleString('es-MX') %></td>
+                              <td><%= registro.estado %></td>
+                              <td><%= registro.motivoScrap ? registro.motivoScrap.replace(/_/g, ' ') : 'N/A' %></td>
+                            </tr>
+                          <% }); %>
+                        <% } %>  
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/js/cerrarsesion.js"></script>
+    <!-- Script centralizado para la captura -->
+    <script src="/js/formato-captura.js"></script>
+    <!-- Inicialización de usuario -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          window.user = window.user || JSON.parse(`<%- JSON.stringify(user || {}) %>`);
+           
+           // Añadir listener para el botón de volver
+           document.getElementById('volver-btn').addEventListener('click', function() {
+               window.history.back();
+           });
+        });
+</script>
+</body>
+</html>

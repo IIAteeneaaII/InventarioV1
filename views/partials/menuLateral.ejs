@@ -1,0 +1,46 @@
+<div class="sidebar translate-left" id="menuLateral">
+
+    <div class="sidebar-content-top">
+        <div class="top-bar-menu">
+            <a onclick="cerrarMenu()" class="back-arrow">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            <h4 class="fw-bold">Menú</h4>
+        </div>
+<!-- Sección de foto de perfil -->
+    <div class="profile-section text-center mt-3">
+        <img src="<%= profilePic %>" alt="Foto de perfil" class="profile-img mb-2" style="width: 100px; height: 100px; object-fit: cover; border-radius: 50%;">
+        <h5 class="username mt-2">
+        <%= userName %>
+        </h5>
+    </div>
+        <div class="d-grid mt-3">
+            <button class="menu-btn" onclick="location.href='/actualizarPerfil';">
+                <i class="fas fa-user-edit"></i> Perfil
+            </button>
+            <button class="menu-btn" onclick="location.href='/Preferencias';">
+                <i class="fas fa-sliders-h"></i> Lotes
+            </button>
+            <button class="menu-btn" onclick="location.href='/ConfigurarNotificaciones';">
+                <i class="fas fa-bell"></i> Configurar notificaciones
+            </button>
+            <button class="menu-btn" onclick="location.href='/guiadeUsuario';">
+                <i class="fas fa-book-open"></i> Guía de usuario
+            </button>
+            <button class="menu-btn" onclick="location.href='/quienesSomos';">
+                <i class="fas fa-users"></i> ¿Quiénes somos?
+            </button>
+            <button class="menu-btn" onclick="location.href='/privacidad';">
+                <i class="fas fa-shield-alt"></i> Términos y privacidad
+            </button>
+        </div>
+    </div>
+    <div class="sidebar-content-bottom">
+        <button class="btn logout-btn " data-bs-toggle="modal" data-bs-target="#logoutModal">
+            <i class="fas fa-sign-out-alt"></i> Cerrar sesión
+        </button>
+        <button class="btn logout-btn" onclick="location.href='/eliminarcuenta';">
+            <i class="fas fa-user-slash"></i> Eliminar cuenta
+        </button>
+    </div>
+</div>

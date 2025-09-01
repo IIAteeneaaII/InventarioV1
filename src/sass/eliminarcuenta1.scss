@@ -1,0 +1,18 @@
+@use 'base/variables' as v;
+@use 'base/mixins' as m;
+
+
+.form-check-label{
+    font-family: v.$text;
+    font-size: 12px;
+}
+
+.form-check a:hover {
+    text-decoration: underline;
+    color: #0056b3; /* Cambia el color al pasar el mouse */
+}
+
+.form-check a {
+    color: v.$black; /* Color del enlace */
+    text-decoration: underline; /* Sin subrayado */
+}

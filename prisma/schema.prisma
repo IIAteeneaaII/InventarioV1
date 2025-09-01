@@ -1,0 +1,257 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Rol {
+  UAI
+  UA
+  UV
+  UReg
+  UTI
+  UR
+  UC
+  UE
+  UEN
+}
+
+enum EstadoRegistro {
+  SN_OK
+  SCRAP_COSMETICO
+  SCRAP_ELECTRONICO
+  SCRAP_INFESTACION
+  REPARACION
+}
+
+enum EstadoLote {
+  EN_PROCESO
+  PAUSADO
+  COMPLETADO
+  CANCELADO
+}
+
+enum TipoInsumo {
+  CAPUCHONES
+  BASES
+  TAPAS
+}
+
+enum TipoMovimiento {
+  ENTRADA
+  SALIDA
+}
+
+enum FaseProceso {
+  REGISTRO
+  TEST_INICIAL
+  ENSAMBLE
+  RETEST
+  EMPAQUE
+  SCRAP
+  REPARACION
+}
+
+// Actualizado el enum MotivoScrap para renombrar DEFECTO_HW a FUERA_DE_RANGO
+enum MotivoScrap {
+  FUERA_DE_RANGO // Antes DEFECTO_HW
+  DEFECTO_SW
+  SIN_REPARACION
+  COSMETICA // Nuevo
+  INFESTADO // Nuevo
+  OTRO
+}
+
+// Nuevo enum para detalle de scrap
+enum DetalleScrap {
+  CIRCUITO_OK_BASE_NOK // Sirve circuito pero no base (Cosmética)
+  BASE_OK_CIRCUITO_NOK // Sirve base pero no circuito (Fuera de rango)
+  CIRCUITO_NOK_BASE_NOK // No sirve circuito ni base (Fuera de rango)
+  INFESTACION // Para casos de infestación
+  OTRO // Para otros casos
+}
+
+// Nuevo enum para distinguir tipos de lote
+enum TipoLote {
+  ENTRADA
+  SALIDA
+}
+
+// Usuario del sistema
+model User {
+  id               Int              @id @default(autoincrement())
+  nombre           String
+  userName         String           @unique
+  email            String           @unique
+  password         String
+  rol              Rol
+  activo           Boolean
+  deletedAt        DateTime?
+  registros        Registro[]
+  lotes            Lote[]           @relation("UserLotes")
+  logs             Log[]
+  modems           Modem[]
+  // Relación para registros de insumos cosméticos
+  registrosInsumos RegistroInsumo[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+// Catálogo de SKUs
+model CatalogoSKU {
+  id                  Int                   @id
+  nombre              String                @unique
+  skuItem             String?               @unique // Añadir este campo
+  descripcion         String?
+  lotes               Lote[]
+  modems              Modem[]
+  // Relaciones para inventario cosmético
+  inventarioCosmetico InventarioCosmetico[]
+  registrosInsumos    RegistroInsumo[]
+}
+
+// Lotes de trabajo - Modificado con nuevos campos
+model Lote {
+  id            Int          @id @default(autoincrement())
+  numero        String       @unique
+  skuId         Int
+  sku           CatalogoSKU  @relation(fields: [skuId], references: [id])
+  tipoLote      TipoLote     @default(ENTRADA) // Nuevo campo
+  esScrap       Boolean      @default(false) // Nuevo campo
+  motivoScrap   MotivoScrap? // Nuevo campo para lotes de scrap
+  estado        EstadoLote   @default(EN_PROCESO)
+  prioridad     Int          @default(5)
+  responsableId Int
+  responsable   User         @relation("UserLotes", fields: [responsableId], references: [id])
+  registros     Registro[]
+  modems        Modem[]      @relation("ModemsEnLote") // Relación renombrada
+  modemsSalida  Modem[]      @relation("ModemsEnLoteSalida") // Nueva relación
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  deletedAt     DateTime?
+}
+
+// Modems/Dispositivos a procesar - Modificado con nuevos campos
+model Modem {
+  id             Int           @id @default(autoincrement())
+  sn             String        @unique
+  skuId          Int
+  sku            CatalogoSKU   @relation(fields: [skuId], references: [id])
+  estadoActualId Int
+  estadoActual   Estado        @relation(fields: [estadoActualId], references: [id])
+  faseActual     FaseProceso
+  loteId         Int
+  lote           Lote          @relation("ModemsEnLote", fields: [loteId], references: [id])
+  loteSalidaId   Int? // Nuevo campo
+  loteSalida     Lote?         @relation("ModemsEnLoteSalida", fields: [loteSalidaId], references: [id])
+  responsableId  Int
+  responsable    User          @relation(fields: [responsableId], references: [id])
+  motivoScrap    MotivoScrap?
+  detalleScrap   DetalleScrap? // Nuevo campo
+  registros      Registro[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+}
+
+// Registros de acciones realizadas - Modificado con nuevo campo
+model Registro {
+  id           Int            @id @default(autoincrement())
+  sn           String
+  fase         FaseProceso
+  estado       EstadoRegistro
+  motivoScrap  MotivoScrap?
+  detalleScrap DetalleScrap? // Nuevo campo
+  reparacion   String?
+  userId       Int
+  user         User           @relation(fields: [userId], references: [id])
+  loteId       Int
+  lote         Lote           @relation(fields: [loteId], references: [id])
+  modemId      Int
+  modem        Modem          @relation(fields: [modemId], references: [id])
+  createdAt    DateTime       @default(now())
+
+  @@index([userId])
+  @@index([loteId])
+  @@index([modemId])
+}
+
+// Log de actividades
+model Log {
+  id        Int      @id @default(autoincrement())
+  accion    String
+  entidad   String
+  detalle   String?
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// Definición de estados posibles en el sistema
+model Estado {
+  id                  Int                @id @default(autoincrement())
+  nombre              String             @unique
+  descripcion         String?
+  codigoInterno       String             @unique
+  esFinal             Boolean            @default(false)
+  requiereObservacion Boolean            @default(false)
+  ordenDisplay        Int                @default(0)
+  color               String?
+  modems              Modem[]
+  transicionesDesde   TransicionEstado[] @relation("EstadoDesde")
+  transicionesHacia   TransicionEstado[] @relation("EstadoHacia")
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+}
+
+// Nuevo modelo para el inventario de insumos cosméticos
+model InventarioCosmetico {
+  id         Int         @id @default(autoincrement())
+  skuId      Int
+  sku        CatalogoSKU @relation(fields: [skuId], references: [id])
+  tipoInsumo TipoInsumo
+  cantidad   Int         @default(0)
+  updatedAt  DateTime    @updatedAt
+
+  @@unique([skuId, tipoInsumo])
+  @@index([skuId])
+}
+
+// Nuevo modelo para el historial de movimientos de insumos
+model RegistroInsumo {
+  id             Int            @id @default(autoincrement())
+  tipoMovimiento TipoMovimiento
+  tipoInsumo     TipoInsumo
+  skuId          Int
+  sku            CatalogoSKU    @relation(fields: [skuId], references: [id])
+  cantidad       Int
+  responsableId  Int
+  responsable    User           @relation(fields: [responsableId], references: [id])
+  createdAt      DateTime       @default(now())
+
+  @@index([skuId])
+  @@index([responsableId])
+}
+
+// Transiciones permitidas entre estados
+model TransicionEstado {
+  id                  Int      @id @default(autoincrement())
+  estadoDesdeId       Int
+  estadoDesde         Estado   @relation("EstadoDesde", fields: [estadoDesdeId], references: [id])
+  estadoHaciaId       Int
+  estadoHacia         Estado   @relation("EstadoHacia", fields: [estadoHaciaId], references: [id])
+  nombreEvento        String
+  descripcion         String?
+  requiereCantidad    Boolean  @default(false)
+  requiereObservacion Boolean  @default(false)
+  rolesPermitidos     String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([estadoDesdeId, nombreEvento])
+  @@index([estadoDesdeId])
+  @@index([estadoHaciaId])
+}

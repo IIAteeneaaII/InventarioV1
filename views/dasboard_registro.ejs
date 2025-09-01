@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registro</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/just-validate@4.3.0/dist/css/just-validate.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  <h2>Registro de Usuario</h2>
+
+  <% if (error) { %>
+    <p style="color: red;"><%= error %></p>
+  <% } %>
+
+  <form id="formRegistro">
+    <label>Nombre completo:</label><br />
+    <input type="text" name="nombre" id="nombre" required /><br /><br />
+
+    <label>Nombre de usuario:</label><br />
+    <input type="text" name="userName" id="userName" required /><br /><br />
+
+    <label>Correo electrónico:</label><br />
+    <input type="email" name="email" id="email" required /><br /><br />
+
+    <label>Contraseña:</label><br />
+    <input type="password" name="password" id="password" required /><br /><br />
+
+    <label>Confirmar contraseña:</label><br />
+    <input type="password" name="confirmarContrasena" id="confirmarContrasena" required /><br /><br />
+
+    <label>Rol:</label><br />
+    <select name="rol" id="rol" required>
+      <option value="">-- Selecciona un rol --</option>
+      <option value="UAI">UAI</option>
+      <option value="UA">UA</option>
+      <option value="UV">UV</option>
+      <option value="UReg">UReg</option>
+      <option value="UTI">UTI</option>
+      <option value="UR">UR</option>
+      <option value="UC">UC</option>
+      <option value="UE">UE</option>
+      <option value="ULL">ULL</option>
+    </select><br /><br />
+
+    <label>
+      <input type="checkbox" id="terminosCheck" /> Acepto los términos y condiciones
+    </label><br /><br />
+
+    <button type="submit">Registrarse</button>
+  </form>
+
+  <script src="https://cdn.jsdelivr.net/npm/just-validate@4.3.0/dist/just-validate.production.min.js"></script>
+  <script src="/js/registro.js"></script>
+</body>
+</html>

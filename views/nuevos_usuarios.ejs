@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel Administrador - Gestión de Usuarios</title>
+  <link rel="stylesheet" href="/css/admin.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+  <div class="admin-container">
+    <div class="user-header">
+      <div>
+        <h1>Panel Administrador</h1>
+        <p>Gestión de usuarios del sistema</p>
+      </div>
+      <div class="user-info">
+        <div class="logout-container">
+          <i class="fas fa-right-from-bracket logout-icon" onclick="cerrarSesion()" title="Cerrar sesión"></i>
+        </div>
+        <div class="user-icon">A</div>
+        <div>
+          <div class="username">Administrador</div>
+          <div class="user-role">Rol: UAI</div>
+        </div>
+      </div>
+    </div>
+
+    <section id="crearUsuario" class="form-section">
+      <h2>Crear nuevo usuario</h2>
+      <form id="formCrearUsuario">
+        <div class="input-group">
+          <label for="nombre">Nombre completo:</label>
+          <input type="text" id="nombre" required />
+        </div>
+        <div class="input-group">
+          <label for="userName">Nombre de usuario:</label>
+          <input type="text" id="userName" required />
+        </div>
+        <div class="input-group">
+          <label for="email">Email:</label>
+          <input type="email" id="email" required />
+        </div>
+        <div class="input-group">
+          <label for="password">Contraseña:</label>
+          <input type="password" id="password" required minlength="8" />
+        </div>
+        <div class="input-group">
+          <label for="password">Confirmar contraseña:</label>
+          <input type="password" id="passwordConfirm" required minlength="8" />
+        </div>
+        <div class="input-group">
+          <label for="rol">Rol:</label>
+          <select id="rol" required>
+            <option value="">Selecciona un rol</option>
+            <option value="UAI">Administrador (UAI)</option>
+            <option value="UReg">Registro (UReg)</option>
+            <option value="UTI">Test Inicial (UTI)</option>
+            <option value="UC">Calidad (UC)</option>
+            <option value="ULL">Liberación y Limpieza (ULL)</option>
+            <option value="UR">Re-Test (UR)</option>
+            <option value="UE">Empaque (UE)</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-submit">
+          <span class="btn-icon">+</span> Crear usuario
+        </button>
+      </form>
+
+      <!-- NUEVA SECCIÓN: Usuarios registrados -->
+      <h2>Usuarios registrados</h2>
+      <div class="table-container">
+        <table class="usuarios-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Rol</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="usuariosTableBody">
+            <!-- Se llenará dinámicamente con JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- Modal editar -->
+  <div id="modalEditar" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Editar usuario</h3>
+      </div>
+      <form id="formEditarUsuario">
+        <input type="hidden" id="editarId" />
+        <div class="input-group">
+          <label for="editarNombre">Nombre:</label>
+          <input type="text" id="editarNombre" required />
+        </div>
+        <div class="input-group">
+          <label for="editarEmail">Email:</label>
+          <input type="email" id="editarEmail" required />
+        </div>
+        <div class="input-group">
+          <label for="editarRol">Rol:</label>
+          <select id="editarRol" required>
+            <option value="">Selecciona rol</option>
+            <option value="UAI">Administrador (UAI)</option>
+            <option value="UReg">Registro (UReg)</option>
+            <option value="UTI">Test Inicial (UTI)</option>
+            <option value="UC">Calidad (UC)</option>
+            <option value="ULL">Liberación y Limpieza (ULL)</option>
+            <option value="UR">Re-Test (UR)</option>
+            <option value="UE">Empaque (UE)</option>
+          </select>
+        </div>
+        <div class="modal-buttons">
+          <button type="submit" class="btn btn-primary">Guardar</button>
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal()">✕ Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function cerrarSesion() {
+      Swal.fire({
+        title: "¿Deseas cerrar sesión?",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Sí, salir",
+        cancelButtonText: "Cancelar"
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = "/login";
+        }
+      });
+    }
+
+    function mostrarMensaje(texto, tipo) {
+      Swal.fire({
+        icon: tipo === 'error' ? 'error' : tipo === 'success' ? 'success' : 'info',
+        title: texto,
+        showConfirmButton: false,
+        timer: 2000
+      });
+    }
+
+    function obtenerTextoRol(codigoRol) {
+      const roles = {
+        'UAI': 'Administrador (UAI)', 'UReg': 'Registro (UReg)', 'UTI': 'Test Inicial (UTI)',
+        'UC': 'Calidad (UC)', 'ULL': 'Liberación y Limpieza (ULL)', 'UR': 'Re-Test (UR)', 'UE': 'Empaque (UE)'
+      };
+      return roles[codigoRol] || codigoRol;
+    }
+
+    let usuarios = [];
+    let nextId = 1;
+
+    function renderizarTabla() {
+      const tbody = document.getElementById('usuariosTableBody');
+      tbody.innerHTML = '';
+      usuarios.forEach(usuario => {
+        const tr = document.createElement('tr');
+        tr.dataset.id = usuario.id;
+        tr.className = usuario.activo ? '' : 'usuario-deshabilitado';
+        tr.innerHTML = `
+          <td>${usuario.id}</td>
+          <td>${usuario.nombre}</td>
+          <td>${usuario.email}</td>
+          <td><span class="rol-tag">${obtenerTextoRol(usuario.rol)}</span></td>
+          <td>
+            <button class="acciones-btn" onclick="abrirModal(${usuario.id})">✏️ Editar</button>
+            <button class="acciones-btn" onclick="eliminarUsuario(${usuario.id})">🗑️ Eliminar</button>
+            <button class="acciones-btn" onclick="toggleUsuario(${usuario.id})">
+              ${usuario.activo ? '🚫 Deshabilitar' : '✅ Habilitar'}
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function crearUsuario() {
+      const nombre = document.getElementById('nombre').value;
+      const userName = document.getElementById('userName').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('passwordConfirm').value;
+      const rol = document.getElementById('rol').value;
+
+      if (!nombre || !userName || !email || !password || !confirmPassword || !rol) {
+        mostrarMensaje('Por favor, complete todos los campos', 'error');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        mostrarMensaje('Las contraseñas no coinciden', 'error');
+        return;
+      }
+
+      const nuevoUsuario = { id: nextId++, nombre, userName, email, rol, activo: true };
+      usuarios.push(nuevoUsuario);
+      renderizarTabla();
+      mostrarMensaje(`Usuario "${nombre}" creado exitosamente`, 'success');
+      document.getElementById('formCrearUsuario').reset();
+    }
+
+    function eliminarUsuario(id) {
+      const usuario = usuarios.find(u => u.id === id);
+      if (!usuario) return;
+
+      Swal.fire({
+        title: `¿Eliminar a "${usuario.nombre}"?`,
+        text: "Esta acción no se puede deshacer",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Sí, eliminar",
+        cancelButtonText: "Cancelar"
+      }).then((result) => {
+        if (result.isConfirmed) {
+          usuarios = usuarios.filter(u => u.id !== id);
+          renderizarTabla();
+          mostrarMensaje(`Usuario "${usuario.nombre}" eliminado`, 'success');
+        }
+      });
+    }
+
+    function toggleUsuario(id) {
+      const usuario = usuarios.find(u => u.id === id);
+      if (!usuario) return;
+
+      const accion = usuario.activo ? "deshabilitar" : "habilitar";
+
+      Swal.fire({
+        title: `¿Quieres ${accion} a "${usuario.nombre}"?`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: `Sí, ${accion}`,
+        cancelButtonText: "Cancelar"
+      }).then((result) => {
+        if (result.isConfirmed) {
+          usuario.activo = !usuario.activo;
+          renderizarTabla();
+          mostrarMensaje(`Usuario "${usuario.nombre}" ha sido ${accion}do`, 'info');
+        }
+      });
+    }
+
+    function abrirModal(userId) {
+      const usuario = usuarios.find(u => u.id === userId);
+      if (usuario) {
+        document.getElementById('editarId').value = usuario.id;
+        document.getElementById('editarNombre').value = usuario.nombre;
+        document.getElementById('editarEmail').value = usuario.email;
+        document.getElementById('editarRol').value = usuario.rol;
+        document.getElementById('modalEditar').style.display = 'flex';
+      }
+    }
+
+    function cerrarModal() {
+      document.getElementById('modalEditar').style.display = 'none';
+    }
+
+    function guardarEdicion() {
+      const id = parseInt(document.getElementById('editarId').value);
+      const nombre = document.getElementById('editarNombre').value;
+      const email = document.getElementById('editarEmail').value;
+      const rol = document.getElementById('editarRol').value;
+
+      const usuario = usuarios.find(u => u.id === id);
+      if (usuario) {
+        usuario.nombre = nombre;
+        usuario.email = email;
+        usuario.rol = rol;
+        renderizarTabla();
+        mostrarMensaje(`Usuario "${nombre}" actualizado`, 'success');
+        cerrarModal();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderizarTabla();
+      document.getElementById('formCrearUsuario').addEventListener('submit', e => {
+        e.preventDefault();
+        crearUsuario();
+      });
+      document.getElementById('formEditarUsuario').addEventListener('submit', e => {
+        e.preventDefault();
+        guardarEdicion();
+      });
+      document.getElementById('modalEditar').addEventListener('click', e => {
+        if (e.target === document.getElementById('modalEditar')) cerrarModal();
+      });
+    });
+  </script>
+</body>
+</html>

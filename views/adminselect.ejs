@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel Administrador - Gestión de Usuarios</title>
+  <link rel="stylesheet" href="/css/admin_dashboard.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+</head>
+<body>
+  <div class="admin-container">
+    <div class="user-header">
+      <div>
+        <h1>Panel Administrador</h1>
+        <p>Gestión de usuarios del sistema</p>
+      </div>
+      <div class="user-info">
+        <div class="logout-container">
+          <i class="fas fa-right-from-bracket logout-icon" onclick="cerrarSesion()" title="Cerrar sesión"></i>
+        </div>
+        <div class="user-icon">A</div>
+        <div class="user-details">
+          <div class="username">Administrador</div>
+          <div class="user-role">Rol: UAI</div>
+          <button class="btn-status" onclick="window.location.href='/resumen'">
+            Consulta de Estatus
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <section id="crearUsuario" class="form-section">
+      <h2>Crear nuevo usuario</h2>
+      <form id="formRegistro">
+        <div class="input-group">
+          <label for="nombre">Nombre completo:</label>
+          <input type="text" id="nombre" name="nombre" required />
+        </div>
+        <div class="input-group">
+          <label for="userName">Nombre de usuario:</label>
+          <input type="text" id="userName" name="userName" required />
+        </div>
+        <div class="input-group">
+          <label for="email">Email:</label>
+          <input type="email" id="email" name="email" required />
+        </div>
+        <div class="input-group">
+          <label for="password">Contraseña:</label>
+          <input type="password" id="password" name="password" required minlength="8" />
+        </div>
+        <div class="input-group">
+          <label for="confirmarContrasena">Confirmar contraseña:</label>
+          <input type="password" id="confirmarContrasena" name="confirmarContrasena" required minlength="8" />
+        </div>
+        <div class="input-group">
+          <label for="rol">Rol:</label>
+          <select id="rol" name="rol" required>
+            <option value="">-- Selecciona un rol --</option>
+            <option value="UAI">UAI</option>
+            <option value="UA">UA</option>
+            <option value="UV">UV</option>
+            <option value="UReg">UReg</option>
+            <option value="UTI">UTI</option>
+            <option value="UR">UR</option>
+            <option value="UC">UC</option>
+            <option value="UE">UE</option>
+            <option value="ULL">ULL</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <input type="checkbox" id="terminosCheck" checked style="display: none;" />
+          <label for="terminosCheck" class="leyenda-terminos">
+            Al crear esta cuenta, confirmas que el usuario ha sido informado y acepta los
+            <a href="/terminos" target="_blank">términos y condiciones</a> del sistema.
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-submit">
+          <span class="btn-icon">+</span> Crear usuario
+        </button>
+      </form>
+
+      <h2>Usuarios registrados</h2>
+      <div class="table-container">
+        <table class="usuarios-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Rol</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="usuariosTableBody">
+            <% if (typeof usuarios !== 'undefined' && usuarios.length > 0) { %>
+              <% usuarios.forEach(usuario => { %>
+                <tr>
+                  <td><%= usuario.id %></td>
+                  <td><%= usuario.nombre %></td>
+                  <td><%= usuario.email %></td>
+                  <td><%= usuario.rol %></td>
+                  <td class="acciones-cell">
+                    <a href="/editarusuario/<%= usuario.id %>" class="btn btn-secondary btn-editar-link" title="Editar">
+                      <i class="fas fa-edit"></i>
+                    </a>
+                    <button class="btn btn-eliminar acciones-btn" data-id="<%= usuario.id %>" title="Eliminar">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                    <!-- Toggle activar/desactivar tipo switch -->
+                    <label class="switch-toggle" title="Activar/Desactivar cuenta">
+                      <input 
+                        type="checkbox" 
+                        class="toggle-activo" 
+                        data-id="<%= usuario.id %>" 
+                        <%= usuario.activo ? 'checked' : '' %>
+                      />
+                      <span class="slider-toggle"></span>
+                    </label>
+                    <span class="estado-texto"><%= usuario.activo ? "Activo" : "Inactivo" %></span>
+                  </td>
+                </tr>
+              <% }); %>
+            <% } else { %>
+              <tr>
+                <td colspan="5">No hay usuarios registrados.</td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- Modal editar -->
+  <div id="modalEditar" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Editar usuario</h3>
+      </div>
+      <form id="formEditarUsuario">
+        <input type="hidden" id="editarId" name="id" />
+        <div class="input-group">
+          <label for="editarNombre">Nombre:</label>
+          <input type="text" id="editarNombre" name="nombre" required />
+        </div>
+        <div class="input-group">
+          <label for="editarEmail">Email:</label>
+          <input type="email" id="editarEmail" name="email" required />
+        </div>
+        <div class="input-group">
+          <label for="editarRol">Rol:</label>
+          <select id="editarRol" name="rol" required>
+            <option value="">Selecciona rol</option>
+            <option value="UAI">Administrador (UAI)</option>
+            <option value="UReg">Registro (UReg)</option>
+            <option value="UTI">Test Inicial (UTI)</option>
+            <option value="UC">Calidad (UC)</option>
+            <option value="ULL">Liberación y Limpieza (ULL)</option>
+            <option value="UR">Re-Test (UR)</option>
+            <option value="UE">Empaque (UE)</option>
+            <option value="UEN">Ensamble (UEN)</option>
+          </select>
+        </div>
+        <!-- Toggle switch en el modal -->
+        <div class="input-group">
+          <label for="editarActivo">Cuenta activa:</label>
+          <label class="switch-toggle">
+            <input type="checkbox" id="editarActivo" name="activo" />
+            <span class="slider-toggle"></span>
+          </label>
+          <span id="editarEstadoTexto" class="estado-texto">Activo</span>
+        </div>
+        <div class="modal-buttons">
+          <button type="submit" class="btn btn-primary">Guardar</button>
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal()">✕ Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/just-validate@4.3.0/dist/just-validate.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="/js/swalConfig.js"></script>
+  <script src="/js/cerrarsesion.js"></script>
+  <script src="/js/registro.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

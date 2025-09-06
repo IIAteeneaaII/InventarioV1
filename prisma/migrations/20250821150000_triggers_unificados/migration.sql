@@ -1,5 +1,6 @@
 -- Migración para implementar triggers del sistema optimizada
 -- Versión unificada con fix para duplicación en EMPAQUE y limpieza de registros intermedios
+-- FASE A: Restricción de permisos para usuario Visualizador (UV) - Solo acceso de consulta
 
 -- Asegurar lenguaje PL/pgSQL
 CREATE EXTENSION IF NOT EXISTS plpgsql;
@@ -82,9 +83,7 @@ DECLARE
     v_mensaje      TEXT;
 BEGIN
     SELECT rol::TEXT INTO v_rol_usuario FROM "User" WHERE id = NEW."responsableId";
-    IF v_rol_usuario = 'UV' THEN
-        RETURN NEW;
-    END IF;
+    -- Eliminado el bypass para UV que permitía saltar validaciones
 
     -- CTE con columnas nombradas y casteo al enum; se usa en UN SOLO SELECT
     WITH fase_order(fase, orden) AS (
@@ -187,7 +186,7 @@ BEGIN
     SELECT rol::TEXT INTO v_rol_usuario FROM "User" WHERE id = NEW."responsableId";
 
     -- Si es rol UReg, validar que solo use REGISTRO
-    -- Si es UA o UV, puede usar cualquier fase
+    -- Si es UA, puede usar cualquier fase (UV restringido)
     -- Para otros roles, validar según corresponda
     CASE v_rol_usuario
         WHEN 'UReg' THEN v_fase_permitida := 'REGISTRO';
@@ -196,13 +195,22 @@ BEGIN
         WHEN 'UEN' THEN v_fase_permitida := 'ENSAMBLE';
         WHEN 'UR' THEN v_fase_permitida := 'RETEST';
         WHEN 'UE' THEN v_fase_permitida := 'EMPAQUE';
-        WHEN 'UV' THEN v_fase_permitida := NULL; -- Mantener UV también con acceso completo
+        WHEN 'UV' THEN v_fase_permitida := 'CONSULTA_SOLO'; -- UV solo para consulta
         ELSE v_fase_permitida := 'REGISTRO';
     END CASE;
     
-    -- Si es UA o UV, permitir cualquier fase
-    IF v_rol_usuario IN ('UA', 'UV') THEN
+    -- Solo UA puede crear modems en cualquier fase
+    IF v_rol_usuario = 'UA' THEN
         RETURN NEW;
+    END IF;
+    
+    -- UV no puede crear modems, solo consultar
+    IF v_rol_usuario = 'UV' THEN
+        INSERT INTO "Log"(accion, entidad, detalle, "userId", "createdAt")
+        VALUES('ERROR_VALIDACION', 'MODEM', 
+               'El usuario con rol UV (Visualizador) no puede crear modems, solo consultar',
+               NEW."responsableId", now());
+        RAISE EXCEPTION 'El usuario Visualizador (UV) no tiene permisos para crear modems';
     END IF;
     
     -- Para otros roles, validar la fase permitida

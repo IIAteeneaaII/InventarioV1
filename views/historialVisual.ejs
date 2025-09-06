@@ -5,6 +5,7 @@
   <title>Historial de Número de Serie</title>
   <link rel="stylesheet" href="/css/admin_dashboard.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 </head>
 <body>
   <div class="admin-container">
@@ -107,12 +108,93 @@
         </p>
       <% } %>
     <% } %>
+
+    <!-- ====== Botón flotante "Acotaciones" (no altera la lógica del buscador) ====== -->
+    <button id="btn-acotaciones" class="btn btn-primary btn-acotaciones-floating" aria-haspopup="dialog" aria-controls="modalAcotaciones">
+      <i class="fas fa-info-circle" style="margin-right:1px;"></i> 
+    </button>
   </div>
 
-<script>
-  document.getElementById('btn-regresar').addEventListener('click', function() {
-    window.location.href = '/adminventario';
-  });
-</script>
+  <!-- ====== Modal de Acotaciones ====== -->
+  <div id="modalAcotaciones" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalAcotacionesTitulo" style="display:none;">
+    <div class="modal-content modal-content-acotaciones">
+      <span class="close-modal" id="closeAcotaciones" aria-label="Cerrar">&times;</span>
+      <h3 id="modalAcotacionesTitulo" style="margin-top:0;">Descripción de Estados</h3>
+      <div id="modalAcotacionesBody"><!-- Contenido compacto inyectado por JS --></div>
+    </div>
+  </div>
+
+  <!-- ====== Template oculto con el contenido de Acotaciones (no se muestra en la página) ====== -->
+  <template id="acotacionesTemplate">
+    <div class="acotaciones-container">
+      <h2>Descripción de Estados</h2>
+      <ul class="acotaciones-list">
+        <li class="acotacion-item">
+          <img src="/img/modem_gris.png" alt="Sin procesar">
+          <p>Sin Procesar.</p>
+        </li>
+        <li class="acotacion-item">
+          <img src="/img/modem_azul.png" alt="Proceso actual">
+          <p>Proceso Actual.</p>
+        </li>
+        <li class="acotacion-item">
+          <img src="/img/modem_verde.png" alt="Procesada pasado">
+          <p>Proceso Pasado.</p>
+        </li>
+        <li class="acotacion-item">
+          <img src="/img/modem_morado.png" alt="Cosmético">
+          <p>Proceso Cosmético.</p>
+        </li>
+        <li class="acotacion-item">
+          <img src="/img/modem_rojo.png" alt="Salto de fase">
+          <p>Salto en Fase de Proceso.</p>
+        </li>
+      </ul>
+    </div>
+  </template>
+
+  <!-- ====== Script externo requerido ====== -->
+  <script defer src="/js/acotaciones-modal.js"></script>
+
+  <!-- ====== JS inline existente ====== -->
+  <script>
+    document.getElementById('btn-regresar').addEventListener('click', function() {
+      window.location.href = '/adminventario';
+    });
+  </script>
+
+  <!-- ====== Fallback inline por si aún no creas /js/acotaciones-modal.js ====== -->
+  <script>
+    (function () {
+      const btn = document.getElementById('btn-acotaciones');
+      const modal = document.getElementById('modalAcotaciones');
+      const closeBtn = document.getElementById('closeAcotaciones');
+      const body = document.getElementById('modalAcotacionesBody');
+      const tpl = document.getElementById('acotacionesTemplate');
+
+      function abrirModal() {
+        body.innerHTML = '';
+        if (tpl?.content) {
+          const clon = tpl.content.cloneNode(true);
+          const cont = clon.querySelector('.acotaciones-container');
+          if (cont) cont.classList.add('acotaciones-compact'); // versión compacta para modal
+          body.appendChild(clon);
+        }
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+      }
+
+      function cerrarModal() {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+        body.innerHTML = '';
+      }
+
+      btn?.addEventListener('click', abrirModal);
+      closeBtn?.addEventListener('click', cerrarModal);
+      window.addEventListener('click', (e) => { if (e.target === modal) cerrarModal(); });
+      window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.style.display === 'block') cerrarModal(); });
+    })();
+  </script>
 </body>
 </html>

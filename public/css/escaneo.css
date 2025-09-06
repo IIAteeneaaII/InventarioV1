@@ -140,3 +140,9 @@
     font-size: 0.8em;
   }
 }
+
+/* agrega esto a escaneo.css o formatoB.css */
+.motivo-scrap-group {
+  display: none; /* oculta al cargar la página */
+}
+

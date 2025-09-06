@@ -79,7 +79,7 @@ async function main() {
     const from = flow[i];
     const to = flow[i + 1];
     const key = `${from}->${to}`;
-    const roles = rolesPorTransicion[key] || "UV"; // Por defecto solo superadmin
+    const roles = rolesPorTransicion[key] || "UA"; // Por defecto solo admin almacén
 
     // Completar
     transiciones.push({

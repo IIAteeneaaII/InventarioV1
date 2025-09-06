@@ -190,8 +190,8 @@ input[type="text"]:focus, select:focus{
 }
 .search-input:focus{ border-color:#4CAF50; }
 .clear-btn{
-  border:1px solid #ddd;
-  background:#f8f9fa;
+  border:1px solid #365a66;
+  background:#365a66;
   padding:6px 8px;                 /* REDUCIDO: de 8px 10px a 6px 8px */
   border-radius:4px;
   cursor:pointer;

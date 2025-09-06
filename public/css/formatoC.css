@@ -179,10 +179,10 @@ input[type="text"]:focus, select:focus {
     background-color: #5a6268;
 }
 
-
 .btn-volver:hover {
     background-color: #5a6268;
 }
+
 .top-right {
     position: absolute;
     top: 10px;
@@ -200,7 +200,6 @@ input[type="text"]:focus, select:focus {
     border: 2px solid #66b3b7;
 }
 
-
 .logout-icon {
     width: 20px;
     height: 20px;
@@ -215,13 +214,71 @@ input[type="text"]:focus, select:focus {
     opacity: 0.8;
 }
 
-
 .username {
     font-size: 1.5rem;
     font-weight: bold;
     color: #ffffff;
 }
 
+/* ====== ESTILOS PARA LA BARRA DE BÚSQUEDA MEJORADA ====== */
+.historial-search {
+    margin-bottom: 20px;
+}
+
+.search-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 800px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 45px 12px 45px; /* Padding izquierdo para la lupa, derecho para el botón */
+    border: 2px solid #ddd;
+    border-radius: 25px;
+    font-size: 1em;
+    outline: none;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    box-sizing: border-box;
+}
+
+.search-input:focus {
+    border-color: #365a66;
+    box-shadow: 0 0 0 3px rgba(54, 90, 102, 0.1);
+}
+
+.search-input::placeholder {
+    color: #999;
+}
+
+
+
+    
+
+.clear-btn:hover {
+    background-color: #2d4a54;
+}
+
+.clear-btn:focus {
+    outline: 2px solid #365a66;
+    outline-offset: 2px;
+}
+
+.search-count {
+    margin-left: 15px;
+    color: #666;
+    font-size: 0.9em;
+    white-space: nowrap;
+}
+
+/* Animación para cuando se está escribiendo */
+.search-input:not(:placeholder-shown) + .search-icon {
+    color: #365a66;
+}
+
+/* ====== TABLA DE REGISTROS ====== */
 .registros-table {
     width: 100%;
     border-collapse: collapse;
@@ -281,4 +338,30 @@ input[type="text"]:focus, select:focus {
 .motivo-infestado {
     background-color: #fab1a0;
     color: #c23616;
+}
+
+/* ====== RESPONSIVE ====== */
+@media (max-width: 768px) {
+    .search-bar {
+        max-width: 100%;
+    }
+    
+    .search-input {
+        font-size: 16px; /* Evita zoom en iOS */
+    }
+    
+    .clear-btn {
+        padding: 5px 10px;
+        font-size: 0.8em;
+    }
+    
+    .app-container {
+        flex-direction: column;
+        width: 98%;
+    }
+    
+    .form-section {
+        border-right: none;
+        border-bottom: 1px solid #ddd;
+    }
 }

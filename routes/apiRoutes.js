@@ -31,8 +31,8 @@ router.get('/registro/historial/:loteId', registroController.obtenerHistorial);
 // ...existing code...
 
 // Rutas de procesamiento
-router.post('/proceso/modem', verificarRol(['UTI', 'UR', 'UEN', 'UV']), procesamientoController.procesarModem);
-router.post('/proceso/reparacion', verificarRol(['UR', 'UTI', 'UV']), procesamientoController.registrarReparacion);
+router.post('/proceso/modem', verificarRol(['UTI', 'UR', 'UEN']), procesamientoController.procesarModem);
+router.post('/proceso/reparacion', verificarRol(['UR', 'UTI']), procesamientoController.registrarReparacion);
 router.post('/proceso/scrap', procesamientoController.registrarScrapProceso);
 
 // Rutas de empaque

@@ -381,7 +381,7 @@ router.get('/:carpeta/:nombre/:sku', (req, res) => {
 
 // búsqueda de NS
 router.get('/ns', 
-  verificarRol(['UAI', 'UA', 'UV']),
+  verificarRol(['UAI', 'UA']),
   (req, res) => {
       res.render('consulta_ns_admin', { user: req.user });
   }
@@ -389,7 +389,7 @@ router.get('/ns',
 
 // Crear nuevos usuarios
 router.get('/crearusuario', 
-  verificarRol(['UAI', 'UA', 'UV']),
+  verificarRol(['UAI', 'UA']),
   (req, res) => {
       res.render('crearusuario', { user: req.user });
   }

@@ -110,8 +110,6 @@
             autocomplete="off"
             aria-label="Buscar en historial de registros"
           />
-          <button type="button" id="clear-search" class="clear-btn" aria-label="Limpiar búsqueda">Limpiar</button>
-          <span id="search-count" class="search-count" aria-live="polite"></span>
         </div>
       </div>
 
@@ -152,9 +150,9 @@
   <script src="/js/cerrarsesion.js"></script>
   <script src="/js/formato-captura.js"></script>
 
-  <!-- NUEVOS Scripts -->
-  <script src="/InventarioNuevo-main/public/js/scrap-toggle.js"></script>
-  <script src="/InventarioNuevo-main/public/js/historial-search.js"></script>
+   <!-- Referencias a tus JS (sin lógica inline) -->
+  <script src="/js/scrap-toggle.js" defer></script>
+  <script src="/js/historial-search.js" defer></script>
 
   <!-- Utilidades locales -->
   <script>

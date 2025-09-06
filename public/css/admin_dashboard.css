@@ -6,14 +6,94 @@
       min-height: 100vh;
     }
 
-    .admin-container {
-      background-color: white;
-      padding: 30px;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      max-width: 900px;
-      margin: 0 auto;
-    }
+ /* Contenedor principal con posicionamiento para el botón */
+.admin-container {
+  background-color: white;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  max-width: 900px;
+  margin: 0 auto;
+  position: relative; /* necesario para el botón flotante */
+}
+
+/* Botón flotante (idéntico a “Buscar” por .btn .btn-primary) */
+.btn-acotaciones-floating {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2;
+}
+
+/* Modal base */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  inset: 0;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.5);
+}
+.modal-content {
+  background-color: #fff;
+  margin: 10% auto;
+  padding: 20px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+.modal-content-acotaciones {
+  max-width: 560px;
+  max-height: 80vh;
+  overflow: auto;
+  padding: 20px 22px;
+}
+.close-modal {
+  color: #aaa;
+  float: right;
+  font-size: 24px;
+  cursor: pointer;
+}
+.close-modal:hover { color: #555; }
+
+/* Acotaciones original (se usará dentro del modal) */
+.acotaciones-container {
+  margin-top: 20px;
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background-color: #f9f9f9;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+.acotaciones-container h2 {
+  font-size: 1.5rem;
+  color: #2a7d7f;
+  margin-bottom: 18px;
+  border-bottom: 2px solid #e0f7f8;
+  padding-bottom: 6px;
+}
+.acotaciones-list { list-style: none; margin: 0; padding: 0; }
+.acotacion-item {
+  display: flex; align-items: center; gap: 15px;
+  margin-bottom: 18px;
+}
+.acotacion-item img {
+  width: 50px; height: 50px; object-fit: contain;
+  border-radius: 8px; background-color: #fff;
+  border: 1px solid #ddd; padding: 4px; flex-shrink: 0;
+}
+.acotacion-item p {
+  margin: 0; font-size: 1.3rem; font-weight: bold; color: #2c3e50;
+  line-height: 1.5; font-family: "Courier New", Consolas, monospace;
+}
+
+/* Versión compacta para el modal */
+.acotaciones-compact { margin-top: 6px; padding: 8px 4px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fafafa; }
+.acotaciones-compact .acotacion-item { gap: 10px; margin-bottom: 12px; }
+.acotaciones-compact .acotacion-item img { width: 38px; height: 38px; padding: 3px; }
+.acotaciones-compact .acotacion-item p { font-size: 1.05rem; font-weight: 600; }
+.acotaciones-compact h2 { display: none; }
 
     h1, h2 {
       color: #2c3e50;

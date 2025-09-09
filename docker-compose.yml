@@ -24,14 +24,5 @@ services:
     depends_on:
       - postgres
 
- #Puedes descomentar esto si usas Redis más adelante
-  redis:
-    image: redis:6.2
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-
 volumes:
   pgdata:
-  redis-data:  # Solo si habilitas Redis

@@ -8,7 +8,6 @@ const { v4: uuidv4 } = require('uuid');
 // IMPORTACIONES FALTANTES - AÑADIDAS
 const userRepo = require('../repositories/userRepositoryPrisma');
 const { setFlashMessage } = require('../utils/flashMessage');
-const redis = require('../redisClient');
 const { sendRecoveryEmail } = require('../emailSender');
 const { createOrUpdateJob } = require('../utils/jobManager');
 

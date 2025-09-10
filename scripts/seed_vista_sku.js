@@ -26,7 +26,7 @@ async function main() {
     { skuId: 9, nombreVista: 'V5_66262' },
     { skuId: 10, nombreVista: 'FIBERHOME_69643' },
     { skuId: 11, nombreVista: 'ZTE_69644' },
-    { skuId: 12, nombreVista: 'X6_76735' },
+    { skuId: 12, nombreVista: 'X6_79735' },
     { skuId: 13, nombreVista: 'FIBEREXTENDER_74487' },
     { skuId: 14, nombreVista: 'SOUNDBOX_69358' },
   ];

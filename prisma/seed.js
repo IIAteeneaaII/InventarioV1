@@ -17,7 +17,7 @@ async function main() {
     { id: 9, nombre: "V5", skuItem: "66262" },
     { id: 10, nombre: "FIBERHOME", skuItem: "69643" },
     { id: 11, nombre: "ZTE", skuItem: "69644" },
-    { id: 12, nombre: "X6", skuItem: "76735" },
+    { id: 12, nombre: "X6", skuItem: "79735" },
     { id: 13, nombre: "FIBERHOMEEXTENDED", skuItem: "74497" },
     { id: 14, nombre: "SOUNDBOX", skuItem: "69358" },
   ];

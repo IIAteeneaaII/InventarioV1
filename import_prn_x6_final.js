@@ -11,7 +11,7 @@ const MATERIAL_TO_SKU = {
   '72676': { id: 8, nombre: 'V5SMALL' },
   '66262': { id: 9, nombre: 'V5' },
   '69643': { id: 10, nombre: 'FIBERHOME' },
-  '76735': { id: 12, nombre: 'X6' },
+  '79735': { id: 12, nombre: 'X6' },
   '81809': { id: 3, nombre: '4KM36A' },
   '69746': { id: 1, nombre: '4KM37' },
   '69360': { id: 2, nombre: '4KM36B' },

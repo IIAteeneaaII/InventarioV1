@@ -1,5 +1,5 @@
 // import_prn_x6.js — Versión con menú interactivo y función de empaque
-// Ejecuta: node import_prn_x6.js
+// Ejecuta: node import_prn_x6_final.js
 
 const { PrismaClient } = require('@prisma/client');
 const fs = require('fs');
@@ -44,79 +44,331 @@ async function loadInquirer() {
   return inquirer;
 }
 
-// ------------------ Funciones de Utilidad ------------------
+// ------------------ Funciones de Utilidad Mejoradas ------------------
 
 function readTextSmart(filePath) {
   let content = fs.readFileSync(filePath, 'utf8');
+  
+  // Si hay problemas de encoding, intentar con latin1
   const sample = content.slice(0, 2000);
   const unknownCount = (sample.match(/\uFFFD/g) || []).length;
-  if (unknownCount > 5) content = fs.readFileSync(filePath, 'latin1');
+  if (unknownCount > 5) {
+    content = fs.readFileSync(filePath, 'latin1');
+  }
+  
+  // Limpiar BOM si existe
+  content = content.replace(/^\uFEFF/, '');
+  
   return content;
 }
 
 function detectDelimiter(content) {
   const sample = content.slice(0, 5000);
-  const delimiters = [',', ';', '\t', '|'];
+  const delimiters = [',', ';', '\t', '|', ' '];
   let bestDelim = ',';
   let maxCount = 0;
   
   for (const delim of delimiters) {
-    const count = (sample.match(new RegExp(`\\${delim}`, 'g')) || []).length;
+    const regex = delim === ' ' ? /\s{2,}/g : new RegExp(`\\${delim}`, 'g');
+    const count = (sample.match(regex) || []).length;
     if (count > maxCount) {
       maxCount = count;
       bestDelim = delim;
     }
   }
+  
+  console.log(`🔍 Delimitador detectado: "${bestDelim}" (${maxCount} ocurrencias)`);
   return bestDelim;
 }
 
+function parseCSVLine(line, delimiter) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  let i = 0;
+  
+  while (i < line.length) {
+    const char = line[i];
+    
+    if (char === '"' && (i === 0 || line[i-1] === delimiter || line[i-1] === ' ')) {
+      inQuotes = true;
+    } else if (char === '"' && inQuotes && (i === line.length - 1 || line[i+1] === delimiter || line[i+1] === ' ')) {
+      inQuotes = false;
+    } else if (char === delimiter && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+      i++;
+      continue;
+    } else if (!inQuotes && char === ' ' && delimiter === ' ') {
+      // Para espacios múltiples como delimitador
+      while (i < line.length && line[i] === ' ') {
+        i++;
+      }
+      if (current.trim()) {
+        result.push(current.trim());
+        current = '';
+      }
+      continue;
+    } else {
+      current += char;
+    }
+    i++;
+  }
+  
+  if (current.trim()) {
+    result.push(current.trim());
+  }
+  
+  return result.map(field => field.replace(/^["']|["']$/g, ''));
+}
+
 function parseDate(dateStr) {
-  const months = { ene:0,feb:1,mar:2,abr:3,may:4,jun:5,jul:6,ago:7,sep:8,oct:9,nov:10,dic:11 };
+  const months = { 
+    ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5,
+    jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11,
+    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+  };
+  
   const s = dateStr.trim().toLowerCase();
-  const m = s.match(/^(\d{2})-([a-záéíóúñ]{3})-(\d{2})$/i);
-  if (!m) throw new Error(`Formato de fecha no reconocido: "${dateStr}"`);
-  const day  = parseInt(m[1], 10);
-  const mon3 = m[2].normalize('NFD').replace(/\p{Diacritic}/gu, '');
-  const month = months[mon3];
-  const year  = 2000 + parseInt(m[3], 10);
-  if (month == null) throw new Error(`Mes no reconocido en fecha: "${dateStr}"`);
-  return new Date(year, month, day);
+  
+  // Formato DD-MMM-YY (ej: 01-ene-24)
+  let m = s.match(/^(\d{1,2})-([a-záéíóúñ]{3})-(\d{2,4})$/i);
+  if (m) {
+    const day = parseInt(m[1], 10);
+    const mon3 = m[2].normalize('NFD').replace(/\p{Diacritic}/gu, '');
+    const month = months[mon3];
+    let year = parseInt(m[3], 10);
+    if (year < 100) year += 2000;
+    
+    if (month != null) {
+      return new Date(year, month, day);
+    }
+  }
+  
+  // Formato DD/MM/YYYY
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m) {
+    const day = parseInt(m[1], 10);
+    const month = parseInt(m[2], 10) - 1;
+    let year = parseInt(m[3], 10);
+    if (year < 100) year += 2000;
+    return new Date(year, month, day);
+  }
+  
+  // Formato YYYY-MM-DD
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) {
+    const year = parseInt(m[1], 10);
+    const month = parseInt(m[2], 10) - 1;
+    const day = parseInt(m[3], 10);
+    return new Date(year, month, day);
+  }
+  
+  throw new Error(`Formato de fecha no reconocido: "${dateStr}"`);
+}
+
+function detectCSVStructure(lines, delimiter) {
+  if (lines.length === 0) return null;
+  
+  // Analizar primera línea para detectar headers
+  const firstLineCols = parseCSVLine(lines[0], delimiter);
+  const hasHeader = firstLineCols.some(col => 
+    /material|serie|serial|folio|recibo|fecha|sn|number|entrada|salida|proceso/i.test(col.trim())
+  );
+  
+  console.log(`📊 Headers detectados: ${hasHeader ? 'Sí' : 'No'}`);
+  console.log(`📊 Columnas en primera línea: ${firstLineCols.length}`);
+  console.log(`📊 Columnas: [${firstLineCols.map(c => `"${c}"`).join(', ')}]`);
+  
+  // Analizar estructura de datos
+  const dataStartIndex = hasHeader ? 1 : 0;
+  const sampleLines = lines.slice(dataStartIndex, Math.min(dataStartIndex + 5, lines.length));
+  
+  let materialCol = -1, serialCol = -1, folioCol = -1, fechaCol = -1;
+  let salidaCol = -1, entradaCol = -1;
+  
+  if (hasHeader) {
+    firstLineCols.forEach((col, idx) => {
+      const c = col.toLowerCase();
+      if (/material/i.test(c)) materialCol = idx;
+      else if (/serie|serial|sn/i.test(c)) serialCol = idx;
+      else if (/folio/i.test(c)) folioCol = idx;
+      else if (/fecha|recibo|date/i.test(c)) fechaCol = idx;
+      else if (/entrada/i.test(c)) entradaCol = idx;
+      else if (/salida/i.test(c)) salidaCol = idx;
+    });
+    
+    // Si no encontramos serial pero sí entrada/salida, usar entrada como serial
+    if (serialCol === -1 && entradaCol >= 0) {
+      serialCol = entradaCol;
+      console.log(`🔄 Usando columna "Entrada" como número de serie`);
+    }
+  } else {
+    // Detectar por posición y contenido típico
+    if (sampleLines.length > 0) {
+      const sampleCols = parseCSVLine(sampleLines[0], delimiter);
+      
+      sampleCols.forEach((col, idx) => {
+        // Material: números de 5-6 dígitos
+        if (/^\d{5,6}$/.test(col) && materialCol === -1) {
+          materialCol = idx;
+        }
+        // Serial: cadenas alfanuméricas largas (incluyendo hex)
+        else if (/^[A-F0-9]{12,}$/i.test(col) && serialCol === -1) {
+          serialCol = idx;
+        }
+        // Folio: puede ser alfanumérico
+        else if (/^[A-Z0-9\-_]{3,}$/i.test(col) && folioCol === -1 && idx !== serialCol) {
+          folioCol = idx;
+        }
+        // Fecha: patrones de fecha
+        else if (/\d{1,2}[-\/]\w{3}[-\/]\d{2,4}|\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{1,2}-\d{1,2}/.test(col) && fechaCol === -1) {
+          fechaCol = idx;
+        }
+      });
+    }
+  }
+  
+  console.log(`📋 Estructura detectada:`);
+  console.log(`   Material: columna ${materialCol}`);
+  console.log(`   Serial: columna ${serialCol}`);
+  console.log(`   Folio: columna ${folioCol}`);
+  console.log(`   Fecha: columna ${fechaCol}`);
+  console.log(`   Entrada: columna ${entradaCol}`);
+  console.log(`   Salida: columna ${salidaCol}`);
+  
+  return {
+    hasHeader,
+    dataStartIndex,
+    materialCol,
+    serialCol,
+    folioCol,
+    fechaCol,
+    totalCols: firstLineCols.length,
+    entradaCol,
+    salidaCol
+  };
 }
 
 function parseRowsFromContent(content) {
-  const delimiter = detectDelimiter(content);
   const lines = content.split(/\r?\n/).filter(line => line.trim());
   
-  if (lines.length === 0) return [];
+  if (lines.length === 0) {
+    console.log('⚠️ No se encontraron líneas válidas en el archivo');
+    return [];
+  }
   
-  const firstLine = lines[0].split(delimiter);
-  const hasHeader = firstLine.some(col => 
-    /material|serie|folio|recibo/i.test(col.trim())
-  );
+  console.log(`📄 Total de líneas: ${lines.length}`);
   
-  const dataLines = hasHeader ? lines.slice(1) : lines;
+  const delimiter = detectDelimiter(content);
+  const structure = detectCSVStructure(lines, delimiter);
+  
+  if (!structure) {
+    console.error('❌ No se pudo detectar la estructura del archivo');
+    return [];
+  }
+  
+  if (structure.serialCol === -1) {
+    console.error('❌ No se pudo detectar la columna de número de serie');
+    console.log('💡 Estructura encontrada:', structure);
+    console.log('💡 Muestra de datos:');
+    const sampleLines = lines.slice(structure.dataStartIndex, structure.dataStartIndex + 3);
+    sampleLines.forEach((line, i) => {
+      const cols = parseCSVLine(line, delimiter);
+      console.log(`   Línea ${i+1}: [${cols.map(c => `"${c}"`).join(', ')}]`);
+    });
+    return [];
+  }
+  
+  const dataLines = lines.slice(structure.dataStartIndex);
   const rows = [];
+  let processedCount = 0;
+  let skippedCount = 0;
   
-  for (const line of dataLines) {
-    const cols = line.split(delimiter).map(c => c.trim().replace(/['"]/g, ''));
-    
-    if (cols.length >= 4) {
-      try {
-        const row = {
-          material: cols[0],
-          serialNumber: cols[1],
-          folio: cols[2],
-          fechaRecibo: parseDate(cols[3])
-        };
+  console.log(`🔄 Procesando ${dataLines.length} líneas de datos...`);
+  
+  for (let i = 0; i < dataLines.length; i++) {
+    const line = dataLines[i];
+    try {
+      const cols = parseCSVLine(line, delimiter);
+      
+      if (cols.length >= Math.max(structure.serialCol + 1, structure.materialCol + 1)) {
+        const serialNumber = cols[structure.serialCol]?.trim();
         
-        if (row.serialNumber && row.serialNumber.length >= 8) {
+        if (serialNumber && serialNumber.length >= 6) {
+          // Intentar extraer material del nombre del archivo o usar UNKNOWN
+          let material = 'UNKNOWN';
+          
+          // Si no hay columna de material, intentar deducirlo del contexto
+          if (structure.materialCol === -1) {
+            // Buscar en el serial si contiene patrones conocidos
+            const serialUpper = serialNumber.toUpperCase();
+            if (serialUpper.includes('4857') || serialUpper.match(/^[A-F0-9]{16}$/)) {
+              // Patrón típico de V5 o X6
+              if (serialUpper.startsWith('4857')) {
+                material = '79735'; // X6 por defecto para este patrón
+              }
+            }
+          } else {
+            material = cols[structure.materialCol]?.trim() || 'UNKNOWN';
+          }
+          
+          let fechaRecibo;
+          try {
+            fechaRecibo = structure.fechaCol >= 0 ? parseDate(cols[structure.fechaCol]?.trim() || '') : new Date();
+          } catch (e) {
+            fechaRecibo = new Date(); // Fecha por defecto si no se puede parsear
+          }
+          
+          const row = {
+            material: material,
+            serialNumber: serialNumber,
+            folio: structure.folioCol >= 0 ? cols[structure.folioCol]?.trim() || `F${Date.now()}${i}` : `F${Date.now()}${i}`,
+            fechaRecibo: fechaRecibo
+          };
+          
           rows.push(row);
+          processedCount++;
+          
+          // Para archivos con columnas Entrada/Salida, procesar también la salida si existe
+          if (structure.salidaCol >= 0 && cols[structure.salidaCol]?.trim() && 
+              cols[structure.salidaCol].trim() !== serialNumber) {
+            const salidaSerial = cols[structure.salidaCol].trim();
+            if (salidaSerial.length >= 6) {
+              const salidaRow = {
+                material: material,
+                serialNumber: salidaSerial,
+                folio: structure.folioCol >= 0 ? cols[structure.folioCol]?.trim() || `F${Date.now()}${i}S` : `F${Date.now()}${i}S`,
+                fechaRecibo: fechaRecibo
+              };
+              rows.push(salidaRow);
+              processedCount++;
+            }
+          }
+        } else {
+          skippedCount++;
+          if (skippedCount <= 5) {
+            console.warn(`⚠️ Línea ${i + 1} ignorada - Serial inválido: "${serialNumber}"`);
+          }
         }
-      } catch (e) {
-        console.warn(`Fila ignorada por error: ${line} - ${e.message}`);
+      } else {
+        skippedCount++;
+        if (skippedCount <= 5) {
+          console.warn(`⚠️ Línea ${i + 1} ignorada - Columnas insuficientes: ${cols.length}`);
+        }
+      }
+    } catch (e) {
+      skippedCount++;
+      if (skippedCount <= 5) {
+        console.warn(`⚠️ Línea ${i + 1} ignorada - Error: ${e.message}`);
       }
     }
   }
+  
+  console.log(`✅ Procesamiento completado:`);
+  console.log(`   📊 Filas procesadas: ${processedCount}`);
+  console.log(`   ⚠️ Filas omitidas: ${skippedCount}`);
   
   return rows;
 }
@@ -155,7 +407,7 @@ async function findCSVFiles(dir = '.', depth = 2) {
       const fullPath = path.join(dir, item);
       const stat = fs.statSync(fullPath);
       
-      if (stat.isFile() && /\.(csv|txt|prn)$/i.test(item)) {
+      if (stat.isFile() && /\.(csv|txt|prn|tsv)$/i.test(item)) {
         files.push(fullPath);
       } else if (stat.isDirectory() && depth > 0 && !item.startsWith('.') && item !== 'node_modules') {
         const subFiles = await findCSVFiles(fullPath, depth - 1);
@@ -166,28 +418,43 @@ async function findCSVFiles(dir = '.', depth = 2) {
     console.warn(`No se pudo leer directorio ${dir}: ${error.message}`);
   }
   
-  return files;
+  return files.sort();
 }
 
 function previewFileContent(filePath) {
   try {
+    console.log(`🔍 Analizando archivo: ${path.basename(filePath)}`);
     const content = readTextSmart(filePath);
     const rows = parseRowsFromContent(content);
     
     if (rows.length === 0) {
-      return { success: false, message: 'No se detectaron filas válidas en el archivo.' };
+      return { 
+        success: false, 
+        message: 'No se detectaron filas válidas en el archivo. Verifique el formato y contenido.' 
+      };
     }
+    
+    const uniqueMaterials = [...new Set(rows.map(r => r.material))];
+    const uniqueFolios = [...new Set(rows.map(r => r.folio))];
+    const dateRange = {
+      min: new Date(Math.min(...rows.map(r => r.fechaRecibo))),
+      max: new Date(Math.max(...rows.map(r => r.fechaRecibo)))
+    };
     
     return {
       success: true,
       totalRows: rows.length,
       firstRow: rows[0],
-      uniqueMaterials: [...new Set(rows.map(r => r.material))],
-      uniqueFolios: [...new Set(rows.map(r => r.folio))],
-      previewRows: rows.slice(0, 5)
+      uniqueMaterials,
+      uniqueFolios: uniqueFolios.slice(0, 5), // Limitar para no saturar la salida
+      dateRange,
+      previewRows: rows.slice(0, 3)
     };
   } catch (error) {
-    return { success: false, message: `Error al leer el archivo: ${error.message}` };
+    return { 
+      success: false, 
+      message: `Error al leer el archivo: ${error.message}` 
+    };
   }
 }
 
@@ -460,13 +727,16 @@ async function importInteractive() {
       return;
     }
 
+    console.log(`📁 Archivos encontrados: ${files.length}`);
+    files.forEach(f => console.log(`   - ${f}`));
+
     const { filePath } = await inquirer.prompt([
       {
         type: 'list',
         name: 'filePath',
         message: 'Selecciona el archivo a importar:',
         choices: [
-          ...files.map(f => ({ name: f, value: f })),
+          ...files.map(f => ({ name: `📄 ${path.basename(f)} (${f})`, value: f })),
           { name: '📂 Especificar ruta manualmente...', value: 'manual' }
         ]
       }
@@ -495,9 +765,11 @@ async function importInteractive() {
     
     console.log(`\n📊 Datos detectados:`);
     console.log(`   - Total de filas: ${preview.totalRows}`);
+    console.log(`   - Materiales únicos: ${preview.uniqueMaterials.length}`);
     console.log(`   - Materiales: ${preview.uniqueMaterials.join(', ')}`);
-    console.log(`   - Folios: ${preview.uniqueFolios.join(', ')}`);
-    console.log(`\n📑 Primeras ${preview.previewRows.length} filas:`);
+    console.log(`   - Folios (primeros 5): ${preview.uniqueFolios.join(', ')}`);
+    console.log(`   - Rango de fechas: ${preview.dateRange.min.toLocaleDateString()} - ${preview.dateRange.max.toLocaleDateString()}`);
+    console.log(`\n📑 Vista previa (primeras ${preview.previewRows.length} filas):`);
     preview.previewRows.forEach((row, i) => {
       console.log(`   ${i+1}. Material: ${row.material}, SN: ${row.serialNumber}, Folio: ${row.folio}, Fecha: ${row.fechaRecibo.toLocaleDateString()}`);
     });
@@ -506,7 +778,7 @@ async function importInteractive() {
       {
         type: 'confirm',
         name: 'continuar',
-        message: '¿Deseas continuar con la importación?',
+        message: '¿Los datos se ven correctos y deseas continuar?',
         default: true
       }
     ]);
@@ -699,17 +971,22 @@ async function procesarImportacion(filePath, skuId, userId, loteNumero, tipoLote
     
     const uniqueRows = [];
     const seenSerials = new Set();
+    let duplicateCount = 0;
     
     for (const row of rows) {
       if (!seenSerials.has(row.serialNumber)) {
         seenSerials.add(row.serialNumber);
         uniqueRows.push(row);
       } else {
+        duplicateCount++;
         console.warn(`⚠️ Número de serie duplicado ignorado: ${row.serialNumber}`);
       }
     }
     
-    console.log(`📊 Módems únicos a procesar: ${uniqueRows.length}/${rows.length}`);
+    console.log(`📊 Análisis de duplicados:`);
+    console.log(`   - Total leído: ${rows.length}`);
+    console.log(`   - Duplicados encontrados: ${duplicateCount}`);
+    console.log(`   - Únicos a procesar: ${uniqueRows.length}`);
     
     const estadoRetestId = estadoMap['RETEST'] || estadoMap['REGISTRO'] || Object.values(estadoMap)[0];
     const fases = ['REGISTRO', 'TEST_INICIAL', 'ENSAMBLE', 'RETEST'];
@@ -821,6 +1098,692 @@ async function procesarImportacion(filePath, skuId, userId, loteNumero, tipoLote
   }
 }
 
+// ------------------ Función de Importación de Entrada y Salida ------------------
+
+async function importarEntradaYSalida() {
+  try {
+    console.log('\n📥📦 IMPORTADOR DE ENTRADA Y SALIDA 📥📦\n');
+    
+    await loadInquirer();
+    
+    console.log('🔌 Conectando a la base de datos...');
+    await prisma.$connect();
+    console.log('✅ Conexión establecida\n');
+
+    console.log('📚 Cargando datos de la base...');
+    const skus = await prisma.catalogoSKU.findMany({ orderBy: { nombre: 'asc' }});
+    const usuarios = await prisma.user.findMany({ 
+      where: { activo: true },
+      orderBy: { nombre: 'asc' }
+    });
+    const estados = await prisma.estado.findMany();
+    const estadoMap = {};
+    estados.forEach(e => { estadoMap[e.nombre] = e.id; });
+    
+    console.log(`✅ SKUs: ${skus.length}, Usuarios: ${usuarios.length}, Estados: ${estados.length}\n`);
+
+    console.log('📂 Buscando archivos...');
+    const files = await findCSVFiles();
+    
+    if (files.length === 0) {
+      console.log('❌ No se encontraron archivos CSV/TXT/PRN en el directorio');
+      return;
+    }
+
+    const { filePath } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'filePath',
+        message: 'Selecciona el archivo a importar:',
+        choices: files.map(f => ({ name: `📄 ${path.basename(f)} (${f})`, value: f }))
+      }
+    ]);
+
+    console.log(`\n📂 Analizando archivo: ${path.basename(filePath)}`);
+    const content = readTextSmart(filePath);
+    const lines = content.split(/\r?\n/).filter(line => line.trim());
+    
+    if (lines.length === 0) {
+      console.log('❌ Archivo vacío');
+      return;
+    }
+
+    const delimiter = detectDelimiter(content);
+    const structure = detectCSVStructure(lines, delimiter);
+    
+    if (!structure || structure.entradaCol === -1 || structure.salidaCol === -1) {
+      console.error('❌ No se pudieron detectar las columnas de Entrada y Salida');
+      return;
+    }
+
+    console.log('📊 Procesando datos de entrada y salida...');
+    const dataLines = lines.slice(structure.dataStartIndex);
+    
+    const entradas = [];
+    const salidas = [];
+    const relaciones = new Map(); // Para relacionar entrada con salida
+    
+    for (let i = 0; i < dataLines.length; i++) {
+      try {
+        const cols = parseCSVLine(dataLines[i], delimiter);
+        
+        if (cols.length >= Math.max(structure.entradaCol + 1, structure.salidaCol + 1)) {
+          const entradaSN = cols[structure.entradaCol]?.trim();
+          const salidaSN = cols[structure.salidaCol]?.trim();
+          
+          let fechaEntrada, fechaSalida;
+          
+          // Procesar fechas si existen
+          try {
+            // Fecha de entrada (columna 1 - "Fecha Entrada")
+            if (cols.length > 1 && cols[1]) {
+              fechaEntrada = parseDate(cols[1]);
+            } else {
+              fechaEntrada = new Date();
+            }
+            
+            // Fecha de salida (columna 4 - "Fecha Salida")
+            if (cols.length > 4 && cols[4]) {
+              fechaSalida = parseDate(cols[4]);
+            } else {
+              fechaSalida = new Date();
+            }
+          } catch (e) {
+            fechaEntrada = new Date();
+            fechaSalida = new Date();
+          }
+          
+          if (entradaSN && entradaSN.length >= 6) {
+            entradas.push({
+              sn: entradaSN,
+              fecha: fechaEntrada,
+              linea: i + 1
+            });
+          }
+          
+          if (salidaSN && salidaSN.length >= 6) {
+            salidas.push({
+              sn: salidaSN,
+              fecha: fechaSalida,
+              linea: i + 1
+            });
+            
+            // Relacionar entrada con salida si están en la misma línea
+            if (entradaSN && entradaSN.length >= 6) {
+              relaciones.set(entradaSN, salidaSN);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(`⚠️ Error en línea ${i + 1}: ${e.message}`);
+      }
+    }
+    
+    console.log(`\n📊 Análisis de datos:`);
+    console.log(`   📥 Entradas detectadas: ${entradas.length}`);
+    console.log(`   📦 Salidas detectadas: ${salidas.length}`);
+    console.log(`   🔗 Relaciones entrada→salida: ${relaciones.size}`);
+    
+    // Encontrar módems que están en proceso (entrada sin salida correspondiente)
+    const entradasSinSalida = entradas.filter(entrada => !relaciones.has(entrada.sn));
+    const salidasSinEntrada = salidas.filter(salida => 
+      !Array.from(relaciones.values()).includes(salida.sn)
+    );
+    
+    console.log(`   🔄 En proceso (entrada sin salida): ${entradasSinSalida.length}`);
+    console.log(`   ⚠️ Salidas sin entrada correspondiente: ${salidasSinEntrada.length}`);
+
+    const { tipoImportacion } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'tipoImportacion',
+        message: '¿Qué deseas importar?',
+        choices: [
+          { name: `📥 Solo ENTRADAS (${entradas.length} módems) → Estado REGISTRO`, value: 'entradas' },
+          { name: `📦 Solo SALIDAS (${salidas.length} módems) → Estado EMPAQUE`, value: 'salidas' },
+          { name: `🔄 PROCESO COMPLETO (crear entradas + actualizar salidas)`, value: 'completo' },
+          { name: `⚠️ Solo módems EN PROCESO (${entradasSinSalida.length} módems)`, value: 'proceso' },
+          { name: '❌ Cancelar', value: 'cancelar' }
+        ]
+      }
+    ]);
+
+    if (tipoImportacion === 'cancelar') {
+      console.log('❌ Importación cancelada');
+      return;
+    }
+
+    // Seleccionar SKU
+    let skuId;
+    const { selectedSkuId } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'selectedSkuId',
+        message: 'Selecciona el SKU:',
+        choices: skus.map(s => ({ 
+          name: `${s.nombre} - Material: ${s.skuItem || 'N/A'}`, 
+          value: s.id 
+        }))
+      }
+    ]);
+    skuId = selectedSkuId;
+
+    // Seleccionar usuario
+    const usuariosUA = usuarios.filter(u => u.rol === 'UA');
+    let userId;
+    
+    if (usuariosUA.length === 1) {
+      userId = usuariosUA[0].id;
+      console.log(`👤 Usuario seleccionado: ${usuariosUA[0].nombre}`);
+    } else {
+      const { selectedUserId } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'selectedUserId',
+          message: 'Selecciona el usuario responsable:',
+          choices: usuarios.map(u => ({ 
+            name: `${u.nombre} (${u.userName}) - ${u.rol}`, 
+            value: u.id 
+          }))
+        }
+      ]);
+      userId = selectedUserId;
+    }
+
+    // Configurar lote
+    const suggestedLoteNumero = `${path.basename(filePath, '.csv')}_${new Date().toISOString().slice(2, 10).replace(/-/g, '')}`;
+    
+    const { loteNumero } = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'loteNumero',
+        message: 'Número de lote:',
+        default: suggestedLoteNumero,
+        validate: (input) => input.trim().length > 0 ? true : 'El número de lote no puede estar vacío'
+      }
+    ]);
+
+    console.log(`\n📋 Resumen de la importación:`);
+    console.log(`   - Archivo: ${path.basename(filePath)}`); // Corregido: filePath en lugar de selectedFile
+    console.log(`   - Tipo: ${tipoImportacion}`);
+    console.log(`   - SKU: ${skus.find(s => s.id === skuId)?.nombre}`);
+    console.log(`   - Lote: ${loteNumero}`);
+    console.log(`   - Usuario: ${usuarios.find(u => u.id === userId)?.nombre}`);
+    
+    if (tipoImportacion === 'entradas') {
+      console.log(`   📥 Solo se crearán ${entradas.length} módems en REGISTRO`);
+    } else if (tipoImportacion === 'salidas') {
+      console.log(`   📦 Se buscarán y actualizarán ${salidas.length} módems a EMPAQUE`);
+    } else if (tipoImportacion === 'completo') {
+      console.log(`   🔄 Se crearán ${entradas.length} módems en REGISTRO`);
+      console.log(`   🔄 Se actualizarán ${salidas.length} módems a EMPAQUE`);
+    } else if (tipoImportacion === 'proceso') {
+      console.log(`   ⚠️ Solo se crearán ${entradasSinSalida.length} módems en REGISTRO (en proceso)`);
+    }
+    
+    const { confirmar } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirmar',
+        message: '¿Confirmas proceder con la importación?',
+        default: true
+      }
+    ]);
+
+    if (!confirmar) {
+      console.log('❌ Importación cancelada');
+      return;
+    }
+
+    await procesarImportacionEntradaYSalida(
+      tipoImportacion, 
+      entradas, 
+      salidas, 
+      relaciones,
+      skuId, 
+      userId, 
+      loteNumero, 
+      estadoMap
+    );
+
+  } catch (error) {
+    console.error('❌ Error durante la importación:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+// ------------------ Función de Procesamiento de Entrada y Salida ------------------
+
+async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaciones, skuId, userId, loteNumero, estadoMap) {
+  try {
+    console.log('\n⏳ Iniciando procesamiento...');
+    
+    // Verificar si el lote ya existe
+    let lote = await prisma.lote.findUnique({
+      where: { numero: loteNumero }
+    });
+
+    if (lote) {
+      console.log(`⚠️ El lote ${loteNumero} ya existe. Usando lote existente.`);
+    } else {
+      // Crear lote nuevo
+      lote = await prisma.lote.create({
+        data: {
+          numero: loteNumero,
+          skuId: skuId,
+          tipoLote: 'ENTRADA',
+          esScrap: false,
+          estado: 'EN_PROCESO',
+          prioridad: 2,
+          responsableId: userId,
+        }
+      });
+      console.log(`✅ Lote creado: ${lote.numero}`);
+    }
+
+    let procesados = 0;
+    let fallidos = 0;
+    const batchSize = 50;
+
+    if (tipo === 'entradas') {
+      console.log('\n📥 Procesando solo ENTRADAS (REGISTRO)...');
+      
+      for (let i = 0; i < entradas.length; i += batchSize) {
+        const batch = entradas.slice(i, i + batchSize);
+        console.log(`   Lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(entradas.length/batchSize)}...`);
+        
+        for (const entrada of batch) {
+          try {
+            await prisma.$transaction(async (tx) => {
+              // Verificar si ya existe el módem
+              const existingModem = await tx.modem.findUnique({
+                where: { sn: entrada.sn }
+              });
+
+              if (!existingModem) {
+                // Crear módem en REGISTRO
+                const modem = await tx.modem.create({
+                  data: {
+                    sn: entrada.sn,
+                    skuId: skuId,
+                    estadoActualId: estadoMap['REGISTRO'] || estadoMap['RETEST'],
+                    faseActual: 'REGISTRO',
+                    loteId: lote.id,
+                    responsableId: userId,
+                    createdAt: entrada.fecha,
+                  }
+                });
+
+                // Crear registro de REGISTRO
+                await tx.registro.create({
+                  data: {
+                    sn: entrada.sn,
+                    fase: 'REGISTRO',
+                    estado: 'SN_OK',
+                    userId: userId,
+                    loteId: lote.id,
+                                        modemId: modem.id,
+                    createdAt: entrada.fecha,
+                  }
+                });
+
+                procesados++;
+              } else {
+                console.log(`   ⚠️ Módem ${entrada.sn} ya existe, omitiendo...`);
+              }
+            });
+          } catch (error) {
+            fallidos++;
+            if (fallidos <= 5) {
+              console.error(`   ❌ Error procesando entrada ${entrada.sn}: ${error.message}`);
+            }
+          }
+        }
+      }
+    } else if (tipo === 'salidas') {
+      console.log('\n📦 Procesando SALIDAS (buscar por SN de entrada y actualizar a EMPAQUE)...');
+      let noEncontrados = 0;
+      
+      for (let i = 0; i < salidas.length; i += batchSize) {
+        const batch = salidas.slice(i, i + batchSize);
+        console.log(`   Lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(salidas.length/batchSize)}...`);
+        
+        for (const salida of batch) {
+          try {
+            await prisma.$transaction(async (tx) => {
+              // Buscar el módem por SN de entrada que corresponde a esta salida
+              const entradaSN = Array.from(relaciones.entries())
+                .find(([entrada, salidaSN]) => salidaSN === salida.sn)?.[0];
+
+              if (entradaSN) {
+                // Buscar el módem por SN de entrada
+                const modem = await tx.modem.findUnique({
+                  where: { sn: entradaSN }
+                });
+
+                if (modem) {
+                  // Crear las fases intermedias necesarias antes de EMPAQUE
+                  const fases = ['TEST_INICIAL', 'ENSAMBLE', 'RETEST', 'EMPAQUE'];
+                  let lastDateTime = modem.createdAt || new Date();
+                  
+                  for (const fase of fases) {
+                    // Calcular fecha para esta fase (30 minutos después de la anterior)
+                    const fechaFase = new Date(lastDateTime.getTime() + 30 * 60000);
+                    
+                    // Si es la última fase (EMPAQUE), usar la fecha de salida real
+                    const fechaFinal = fase === 'EMPAQUE' ? salida.fecha : fechaFase;
+                    
+                    // Actualizar módem a la fase actual
+                    await tx.modem.update({
+                      where: { id: modem.id },
+                      data: {
+                        faseActual: fase,
+                        estadoActualId: fase === 'EMPAQUE' ? 
+                          (estadoMap['EMPAQUE'] || estadoMap['RETEST']) : 
+                          (estadoMap['RETEST'] || estadoMap['REGISTRO']),
+                        updatedAt: fechaFinal,
+                      }
+                    });
+                    
+                    // Crear registro para esta fase
+                    await tx.registro.create({
+                      data: {
+                        sn: entradaSN,
+                        fase: fase,
+                        estado: 'SN_OK',
+                        userId: userId,
+                        loteId: lote.id,
+                        modemId: modem.id,
+                        createdAt: fechaFinal,
+                      }
+                    });
+                    
+                    lastDateTime = fechaFinal;
+                  }
+                  
+                  procesados++;
+                } else {
+                  noEncontrados++;
+                  if (noEncontrados <= 5) {
+                    console.warn(`   ⚠️ No se encontró módem con SN de entrada: ${entradaSN} para salida: ${salida.sn}`);
+                  }
+                }
+              } else {
+                noEncontrados++;
+                if (noEncontrados <= 5) {
+                  console.warn(`   ⚠️ No se encontró relación entrada→salida para: ${salida.sn}`);
+                }
+              }
+            });
+          } catch (error) {
+            fallidos++;
+            if (fallidos <= 5) {
+              console.error(`   ❌ Error procesando salida ${salida.sn}: ${error.message}`);
+            }
+          }
+        }
+      }
+    } else if (tipo === 'completo') {
+      console.log('\n🔄 Procesando FLUJO COMPLETO (ENTRADA → EMPAQUE)...');
+      
+      // Primero procesar las entradas como REGISTRO
+      console.log('\n📥 Paso 1: Creando módems en REGISTRO...');
+      for (let i = 0; i < entradas.length; i += batchSize) {
+        const batch = entradas.slice(i, i + batchSize);
+        console.log(`   Lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(entradas.length/batchSize)}...`);
+        
+        for (const entrada of batch) {
+          try {
+            await prisma.$transaction(async (tx) => {
+              // Verificar si ya existe
+              const existingModem = await tx.modem.findUnique({
+                where: { sn: entrada.sn }
+              });
+
+              if (!existingModem) {
+                // Crear módem en REGISTRO
+                const modem = await tx.modem.create({
+                  data: {
+                    sn: entrada.sn,
+                    skuId: skuId,
+                    estadoActualId: estadoMap['REGISTRO'] || estadoMap['RETEST'],
+                    faseActual: 'REGISTRO',
+                    loteId: lote.id,
+                    responsableId: userId,
+                    createdAt: entrada.fecha,
+                  }
+                });
+
+                // Crear registro de REGISTRO
+                await tx.registro.create({
+                  data: {
+                    sn: entrada.sn,
+                    fase: 'REGISTRO',
+                    estado: 'SN_OK',
+                    userId: userId,
+                    loteId: lote.id,
+                    modemId: modem.id,
+                    createdAt: entrada.fecha,
+                  }
+                });
+
+                procesados++;
+              }
+            });
+          } catch (error) {
+            fallidos++;
+            if (fallidos <= 5) {
+              console.error(`   ❌ Error procesando entrada ${entrada.sn}: ${error.message}`);
+            }
+          }
+        }
+      }
+
+      // Luego procesar las salidas y actualizar a EMPAQUE
+      console.log('\n📦 Paso 2: Actualizando módems a EMPAQUE...');
+      let empacados = 0;
+      let noEncontrados = 0;
+      
+      for (let i = 0; i < salidas.length; i += batchSize) {
+        const batch = salidas.slice(i, i + batchSize);
+        console.log(`   Lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(salidas.length/batchSize)}...`);
+        
+        for (const salida of batch) {
+          try {
+            await prisma.$transaction(async (tx) => {
+              // Buscar el módem por SN de entrada que corresponde a esta salida
+              const entradaSN = Array.from(relaciones.entries())
+                .find(([entrada, salidaSN]) => salidaSN === salida.sn)?.[0];
+
+              if (entradaSN) {
+                // Buscar el módem por SN de entrada
+                const modem = await tx.modem.findUnique({
+                  where: { sn: entradaSN }
+                });
+
+                if (modem) {
+                  // Crear las fases intermedias necesarias antes de EMPAQUE
+                  const fases = ['TEST_INICIAL', 'ENSAMBLE', 'RETEST', 'EMPAQUE'];
+                  let lastDateTime = modem.createdAt || new Date();
+                  
+                  for (const fase of fases) {
+                    // Calcular fecha para esta fase (30 minutos después de la anterior)
+                    const fechaFase = new Date(lastDateTime.getTime() + 30 * 60000);
+                    
+                    // Si es la última fase (EMPAQUE), usar la fecha de salida real
+                    const fechaFinal = fase === 'EMPAQUE' ? salida.fecha : fechaFase;
+                    
+                    // Actualizar módem a la fase actual
+                    await tx.modem.update({
+                      where: { id: modem.id },
+                      data: {
+                        faseActual: fase,
+                        estadoActualId: fase === 'EMPAQUE' ? 
+                          (estadoMap['EMPAQUE'] || estadoMap['RETEST']) : 
+                          (estadoMap['RETEST'] || estadoMap['REGISTRO']),
+                        updatedAt: fechaFinal,
+                      }
+                    });
+                    
+                    // Crear registro para esta fase
+                    await tx.registro.create({
+                      data: {
+                        sn: entradaSN,
+                        fase: fase,
+                        estado: 'SN_OK',
+                        userId: userId,
+                        loteId: lote.id,
+                        modemId: modem.id,
+                        createdAt: fechaFinal,
+                      }
+                    });
+                    
+                    lastDateTime = fechaFinal;
+                  }
+                  
+                  empacados++;
+                } else {
+                  noEncontrados++;
+                  if (noEncontrados <= 5) {
+                    console.warn(`   ⚠️ No se encontró módem con SN de entrada: ${entradaSN} para salida: ${salida.sn}`);
+                  }
+                }
+              } else {
+                noEncontrados++;
+                if (noEncontrados <= 5) {
+                  console.warn(`   ⚠️ No se encontró relación entrada→salida para: ${salida.sn}`);
+                }
+              }
+            });
+          } catch (error) {
+            fallidos++;
+            if (fallidos <= 5) {
+              console.error(`   ❌ Error procesando salida ${salida.sn}: ${error.message}`);
+            }
+          }
+        }
+      }
+      
+      console.log(`   📦 Módems actualizados a EMPAQUE: ${empacados}`);
+      console.log(`   ⚠️ Módems no encontrados: ${noEncontrados}`);
+      
+    } else if (tipo === 'proceso') {
+      console.log('\n⚠️ Procesando solo módems EN PROCESO (entrada sin salida)...');
+      
+      const entradasSinSalida = entradas.filter(e => !relaciones.has(e.sn));
+      
+      for (let i = 0; i < entradasSinSalida.length; i += batchSize) {
+        const batch = entradasSinSalida.slice(i, i + batchSize);
+        console.log(`   Lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(entradasSinSalida.length/batchSize)}...`);
+        
+        for (const entrada of batch) {
+          try {
+            await prisma.$transaction(async (tx) => {
+              // Verificar si ya existe
+              const existingModem = await tx.modem.findUnique({
+                where: { sn: entrada.sn }
+              });
+
+              if (!existingModem) {
+                // Crear módem en REGISTRO (en proceso)
+                const modem = await tx.modem.create({
+                  data: {
+                    sn: entrada.sn,
+                    skuId: skuId,
+                    estadoActualId: estadoMap['REGISTRO'] || estadoMap['RETEST'],
+                    faseActual: 'REGISTRO',
+                    loteId: lote.id,
+                    responsableId: userId,
+                    createdAt: entrada.fecha,
+                  }
+                });
+
+                // Crear registro de REGISTRO
+                await tx.registro.create({
+                  data: {
+                    sn: entrada.sn,
+                    fase: 'REGISTRO',
+                    estado: 'SN_OK',
+                    userId: userId,
+                    loteId: lote.id,
+                    modemId: modem.id,
+                    createdAt: entrada.fecha,
+                  }
+                });
+
+                procesados++;
+              }
+            });
+          } catch (error) {
+            fallidos++;
+            if (fallidos <= 5) {
+              console.error(`   ❌ Error procesando entrada ${entrada.sn}: ${error.message}`);
+            }
+          }
+        }
+      }
+    }
+
+    await prisma.lote.update({
+      where: { id: lote.id },
+      data: { 
+        estado: 'COMPLETADO',
+        updatedAt: new Date()
+      }
+    });
+
+    console.log('\n🎉 ¡Procesamiento completado!');
+    console.log('📊 Resumen:');
+    console.log(`   ✅ Registros procesados: ${procesados}`);
+    console.log(`   ❌ Registros fallidos: ${fallidos}`);
+    console.log(`   📦 Lote: ${lote.numero}`);
+    console.log(`   🏁 Estado del lote: COMPLETADO`);
+
+    // Mostrar resumen por fase
+    const resumenFases = await prisma.modem.groupBy({
+      by: ['faseActual'],
+      where: { loteId: lote.id },
+      _count: { faseActual: true }
+    });
+    
+    console.log('\n📊 Resumen por fase:');
+    resumenFases.forEach(fase => {
+      console.log(`   ${fase.faseActual}: ${fase._count.faseActual} módems`);
+    });
+
+    // Mostrar estadísticas adicionales si es flujo completo
+    if (tipo === 'completo') {
+      const totalEnRegistro = await prisma.modem.count({
+        where: { 
+          loteId: lote.id,
+          faseActual: 'REGISTRO'
+        }
+      });
+      
+      const totalEnEmpaque = await prisma.modem.count({
+        where: { 
+          loteId: lote.id,
+          faseActual: 'EMPAQUE'
+        }
+      });
+
+      console.log('\n📈 Estadísticas del flujo:');
+      console.log(`   📥 Módems que quedaron en REGISTRO: ${totalEnRegistro}`);
+      console.log(`   📦 Módems que pasaron a EMPAQUE: ${totalEnEmpaque}`);
+      const total = totalEnRegistro + totalEnEmpaque;
+      if (total > 0) {
+        console.log(`   🔄 Porcentaje de completitud: ${Math.round((totalEnEmpaque / total) * 100)}%`);
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Error durante el procesamiento:', error);
+    throw error;
+  }
+}
+
 // ------------------ Menú Principal ------------------
 
 async function menuPrincipal() {
@@ -835,19 +1798,31 @@ async function menuPrincipal() {
         name: 'opcion',
         message: 'Selecciona una opción:',
         choices: [
-          { name: '📥 Importar módems desde archivo CSV', value: 'importar' },
+          { name: '📥📦 Importar ENTRADA y SALIDA desde CSV', value: 'entrada_salida' },
+          { name: '📥 Importar módems desde archivo CSV (original)', value: 'importar' },
           { name: '📦 Procesar módems a EMPAQUE', value: 'empaque' },
+          { name: '🔍 Vista previa de archivo', value: 'preview' },
           { name: '❌ Salir', value: 'salir' }
         ]
       }
     ]);
     
     switch (opcion) {
+      case 'entrada_salida':
+        await importarEntradaYSalida();
+        await menuPrincipal();
+        break;
       case 'importar':
         await importInteractive();
+        await menuPrincipal();
         break;
       case 'empaque':
         await procesarModemsAEmpaque();
+        await menuPrincipal();
+        break;
+      case 'preview':
+        await previewFileOnly();
+        await menuPrincipal();
         break;
       case 'salir':
         console.log('👋 ¡Hasta luego!');
@@ -856,6 +1831,85 @@ async function menuPrincipal() {
     
   } catch (error) {
     console.error('❌ Error en el menú principal:', error);
+  }
+}
+
+async function previewFileOnly() {
+  try {
+    await loadInquirer();
+    
+    console.log('\n🔍 VISTA PREVIA DE ARCHIVO 🔍\n');
+    
+    const files = await findCSVFiles();
+    
+    if (files.length === 0) {
+      console.log('❌ No se encontraron archivos CSV/TXT/PRN en el directorio');
+      return;
+    }
+
+    const { filePath } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'filePath',
+        message: 'Selecciona el archivo a previsualizar:',
+        choices: [
+          ...files.map(f => ({ name: `📄 ${path.basename(f)} (${f})`, value: f })),
+          { name: '📂 Especificar ruta manualmente...', value: 'manual' }
+        ]
+      }
+    ]);
+
+    let selectedFile = filePath;
+    if (filePath === 'manual') {
+      const { manualPath } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'manualPath',
+          message: 'Ingresa la ruta completa del archivo:',
+          validate: (input) => fs.existsSync(input) ? true : 'El archivo no existe'
+        }
+      ]);
+      selectedFile = manualPath;
+    }
+
+    const preview = previewFileContent(selectedFile);
+    
+    if (!preview.success) {
+      console.error(`❌ ${preview.message}`);
+      return;
+    }
+
+    console.log(`\n📊 ANÁLISIS COMPLETO DEL ARCHIVO:`);
+    console.log(`   📁 Archivo: ${path.basename(selectedFile)}`);
+    console.log(`   📏 Tamaño: ${fs.statSync(selectedFile).size} bytes`);
+    console.log(`   📊 Total de registros válidos: ${preview.totalRows}`);
+    console.log(`   🔧 Materiales únicos: ${preview.uniqueMaterials.length}`);
+    console.log(`   📋 Lista de materiales: ${preview.uniqueMaterials.join(', ')}`);
+    console.log(`   📄 Folios (primeros 5): ${preview.uniqueFolios.join(', ')}`);
+    console.log(`   📅 Rango de fechas: ${preview.dateRange.min.toLocaleDateString()} - ${preview.dateRange.max.toLocaleDateString()}`);
+    
+    console.log(`\n📑 MUESTRA DE DATOS (primeras ${preview.previewRows.length} filas):`);
+    preview.previewRows.forEach((row, i) => {
+      console.log(`   ${i+1}. Material: ${row.material}`);
+      console.log(`      Serial: ${row.serialNumber}`);
+      console.log(`      Folio: ${row.folio}`);
+      console.log(`      Fecha: ${row.fechaRecibo.toLocaleDateString()}`);
+      console.log('      ─────────────────────────────');
+    });
+    
+    // Verificar materiales conocidos
+    console.log(`\n🔍 ANÁLISIS DE MATERIALES:`);
+    for (const material of preview.uniqueMaterials) {
+      const knownSku = MATERIAL_TO_SKU[material];
+      if (knownSku) {
+        console.log(`   ✅ ${material} → ${knownSku.nombre} (reconocido)`);
+      } else {
+        console.log(`   ⚠️ ${material} → Material no reconocido`);
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Error durante la vista previa:', error);
   }
 }
 
@@ -881,5 +1935,8 @@ module.exports = {
   parseRowsFromContent, 
   readTextSmart,
   procesarModemsAEmpaque,
-  menuPrincipal
+  menuPrincipal,
+  previewFileOnly,
+  importarEntradaYSalida,
+  procesarImportacionEntradaYSalida
 };

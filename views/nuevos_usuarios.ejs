@@ -62,6 +62,7 @@
             <option value="ULL">Liberación y Limpieza (ULL)</option>
             <option value="UR">Re-Test (UR)</option>
             <option value="UE">Empaque (UE)</option>
+            <option value="UEN">Ensamble (UEN)</option>
           </select>
         </div>
         <button type="submit" class="btn btn-primary btn-submit">
@@ -117,6 +118,7 @@
             <option value="ULL">Liberación y Limpieza (ULL)</option>
             <option value="UR">Re-Test (UR)</option>
             <option value="UE">Empaque (UE)</option>
+            <option value="UEN">Ensamble (UEN)</option>
           </select>
         </div>
         <div class="modal-buttons">
@@ -154,7 +156,7 @@
     function obtenerTextoRol(codigoRol) {
       const roles = {
         'UAI': 'Administrador (UAI)', 'UReg': 'Registro (UReg)', 'UTI': 'Test Inicial (UTI)',
-        'UC': 'Calidad (UC)', 'ULL': 'Liberación y Limpieza (ULL)', 'UR': 'Re-Test (UR)', 'UE': 'Empaque (UE)'
+        'UC': 'Calidad (UC)', 'ULL': 'Liberación y Limpieza (ULL)', 'UR': 'Re-Test (UR)', 'UE': 'Empaque (UE)', 'UEN': 'Ensamble (UEN)'
       };
       return roles[codigoRol] || codigoRol;
     }

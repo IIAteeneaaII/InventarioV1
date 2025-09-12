@@ -28,7 +28,6 @@
     "axios": "^1.10.0",
     "bcrypt": "^5.1.1",
     "cloudinary": "^1.41.3",
-    "connect-redis": "^9.0.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.5.0",
     "ejs": "^3.1.10",
@@ -41,7 +40,6 @@
     "multer-storage-cloudinary": "^4.0.0",
     "node-cron": "^4.0.7",
     "nodemailer": "^7.0.3",
-    "redis": "^5.1.0",
     "sweetalert2": "^11.6.13",
     "uuid": "^11.1.0",
     "winston": "^3.17.0"

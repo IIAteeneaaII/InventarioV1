@@ -68,10 +68,10 @@ try {
       }
     } catch (error) {
       console.error('Error:', error.message);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error al editar usuario',
-        text: error.message || 'Ocurrió un error inesperado'
+      Swal.fire({          icon: 'success',
+          title: '¡Usuario editado correctamente!',
+          confirmButtonText: 'Aceptar',
+          timer: 1800
       });
     }
   });

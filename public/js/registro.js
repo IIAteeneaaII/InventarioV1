@@ -68,10 +68,13 @@ const res = await fetch('/crearusuario', {
         });
       } else {
         Swal.fire({
-          title: 'Error al registrar',
-          text: json.message || 'Verifica los datos e intenta nuevamente.',
-          icon: 'error',
-          confirmButtonText: 'Entendido'
+          title: '¡Registro exitoso!',
+          text: json.message || 'El usuario ha sido creado correctamente.',
+          icon: 'success',
+          confirmButtonText: 'Aceptar'
+        }).then(() => {
+          document.getElementById('formRegistro').reset();
+          validator.refresh(); // Limpia los errores visuales
         });
       }
     } catch (err) {

@@ -1,83 +1,21 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Crear usuario - SIMOD</title>
-  <link rel="stylesheet" href="/css/admin_dashboard.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-</head>
-<body>
-  <div class="admin-container">
-    <div class="user-header">
-      <div>
-        <h1>Crear usuario</h1>
-        <p>Da de alta un nuevo usuario en el sistema</p>
-      </div>
-      <div class="user-info">
-        <div class="user-icon">A</div>
-<div class="user-header" style="justify-content: flex-end;">
-  <button class="btn btn-primary" onclick="window.location.href='/adminventario'">
-    <i class="fas fa-arrow-left"></i> Inicio
-  </button>
-</div>
-      </div>
-    </div>
+        togglePassword.setAttribute("title", "Mostrar contraseña");
+      }
+        // Cambiar el ícono
+        if (currentType === "text") {
+          toggleIcon.classList.remove("fa-eye-slash");
+          toggleIcon.classList.add("fa-eye");
+          togglePassword.setAttribute("title", "Ocultar contraseña");
+        } else {
+          toggleIcon.classList.remove("fa-eye");
+          toggleIcon.classList.add("fa-eye-slash");
+          togglePassword.setAttribute("title", "Mostrar contraseña");
+        }
+      });
+    });
+  });
+</script>
+  </script>
 
-    <section id="crearUsuario" class="form-section">
-      <form id="formRegistro" autocomplete="off">
-        <div class="input-group">
-          <label for="nombre">Nombre completo:</label>
-          <input type="text" id="nombre" name="nombre" required placeholder="Ejemplo: Juan Pérez" />
-        </div>
-        <div class="input-group">
-          <label for="userName">Nombre de usuario:</label>
-          <input type="text" id="userName" name="userName" required placeholder="Ejemplo: jperez" />
-        </div>
-        <div class="input-group">
-          <label for="email">Email:</label>
-          <input type="email" id="email" name="email" required placeholder="correo@ejemplo.com" />
-        </div>
-        <div class="input-group">
-          <label for="password">Contraseña:</label>
-          <input type="password" id="password" name="password" required minlength="8" maxlength="12" placeholder="Mínimo 8, máximo 12 caracteres"/>
-        </div>
-        <div class="input-group">
-          <label for="confirmarContrasena">Confirmar contraseña:</label>
-          <input type="password" id="confirmarContrasena" name="confirmarContrasena" required minlength="8" maxlength="12" placeholder="Repite la contraseña"/>
-        </div>
-        <div class="input-group">
-          <label for="rol">Rol:</label>
-          <select id="rol" name="rol" required>
-            <option value="">-- Selecciona un rol --</option>
-            <option value="UAI">Administrador Inventario (UAI)</option>
-            <option value="UA">Usuario Almacén (UA)</option>
-            <option value="UV">Visualizador (UV)</option>
-            <option value="UReg">Registro (UReg)</option>
-            <option value="UTI">Test Inicial (UTI)</option>
-            <option value="UR">Re-Test (UR)</option>
-            <option value="UC">Cosmetica (UC)</option>
-            <option value="UE">Empaque (UE)</option>
-          </select>
-        </div>
-        <div class="input-group">
-          <input type="checkbox" id="terminosCheck" checked style="display: none;" />
-          <label for="terminosCheck" class="leyenda-terminos">
-            Al crear esta cuenta, confirmas que el usuario ha sido informado y acepta los
-            <a href="/terminos" target="_blank">términos y condiciones</a> del sistema.
-          </label>
-        </div>
-        <button type="submit" class="btn btn-primary btn-submit">
-          <span class="btn-icon">+</span> Crear usuario
-        </button>
-      </form>
-    </section>
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/just-validate@4.3.0/dist/just-validate.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="/js/swalConfig.js"></script>
-  <script src="/js/cerrarsesion.js"></script>
-  <script src="/js/registro.js"></script>
 </body>
+</html>
 </html>

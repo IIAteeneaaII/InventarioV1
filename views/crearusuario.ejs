@@ -1,5 +1,152 @@
-        togglePassword.setAttribute("title", "Mostrar contraseña");
-      }
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Crear usuario - SIMOD</title>
+  <link rel="stylesheet" href="/css/admin_dashboard.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+<style>
+    /* Estilo para el contenedor del input con el botón */
+    .password-container {
+      position: relative;
+    }
+    
+    .password-toggle {
+      position: absolute;
+      right: 2%;
+      top: 28%;
+      background: none;
+      border: none;
+      color: #6c757d;
+      cursor: pointer;
+      padding: 0;
+      font-size: 16px;
+      z-index: 10;
+    }
+    
+    .password-toggle:hover {
+      color: #495057;
+      background: none !important;
+      border: none !important;
+    }
+    
+    .password-toggle:focus {
+      outline: none;
+      background: none !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    
+    /* Asegurar que el input tenga espacio para el botón */
+    .password-input {
+      padding-right: 40px !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+    <div class="user-header">
+      <div>
+        <h1>Crear usuario</h1>
+        <p>Da de alta un nuevo usuario en el sistema</p>
+      </div>
+      <div class="user-info">
+        <div class="user-icon">A</div>
+        <div class="user-header" style="justify-content: flex-end;">
+          <button class="btn btn-primary" onclick="window.location.href='/adminventario'">
+            <i class="fas fa-arrow-left"></i> Inicio
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <section id="crearUsuario" class="form-section">
+      <form id="formRegistro" autocomplete="off">
+        <div class="input-group">
+          <label for="nombre">Nombre completo:</label>
+          <input type="text" id="nombre" name="nombre" required placeholder="Ejemplo: Juan Pérez" />
+        </div>
+        <div class="input-group">
+          <label for="userName">Nombre de usuario:</label>
+          <input type="text" id="userName" name="userName" required placeholder="Ejemplo: jperez" />
+        </div>
+        <div class="input-group">
+          <label for="email">Email:</label>
+          <input type="email" id="email" name="email" required placeholder="correo@ejemplo.com" />
+        </div>
+        <div class="input-group">
+          <label for="password">Contraseña:</label>
+          <div class="password-container">
+            <input type="password" class="password-input" id="password" name="password" required minlength="8" maxlength="12" placeholder="Mínimo 8, máximo 12 caracteres" />
+            <button type="button" class="password-toggle" id="togglePassword" title="Mostrar/Ocultar contraseña">
+              <i class="fas fa-eye-slash" id="toggleIcon"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label for="confirmarContrasena">Confirmar contraseña:</label>
+          <input type="password" id="confirmarContrasena" name="confirmarContrasena" required minlength="8" maxlength="12" placeholder="Repite la contraseña"/>
+        </div>
+        <div class="input-group">
+          <label for="rol">Rol:</label>
+          <select id="rol" name="rol" required>
+            <option value="">-- Selecciona un rol --</option>
+            <option value="UAI">Administrador Inventario (UAI)</option>
+            <option value="UA">Usuario Almacén (UA)</option>
+            <option value="UV">Visualizador (UV)</option>
+            <option value="UReg">Registro (UReg)</option>
+            <option value="UTI">Test Inicial (UTI)</option>
+            <option value="UR">Re-Test (UR)</option>
+            <option value="UC">Cosmetica (UC)</option>
+            <option value="UE">Empaque (UE)</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <input type="checkbox" id="terminosCheck" checked style="display: none;" />
+          <label for="terminosCheck" class="leyenda-terminos">
+            Al crear esta cuenta, confirmas que el usuario ha sido informado y acepta los
+            <a href="/terminos" target="_blank">términos y condiciones</a> del sistema.
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-submit">
+          <span class="btn-icon">+</span> Crear usuario
+        </button>
+      </form>
+    </section>
+  </div>
+
+  <!-- Scripts en el orden correcto -->
+  <!-- 1. JustValidate -->
+  <script src="https://cdn.jsdelivr.net/npm/just-validate@4.3.0/dist/just-validate.production.min.js"></script>
+  
+  <!-- 2. SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <!-- 3. Configuración personalizada de SweetAlert2 -->
+  <script src="/js/swalConfig.js"></script>
+  
+  <!-- 4. Otros scripts de la aplicación -->
+  <script src="/js/cerrarsesion.js"></script>
+  
+  <!-- 5. Script principal del registro -->
+  <script src="/js/registro.js"></script>
+  
+  <!-- 6. Script para mostrar/ocultar contraseña -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const togglePassword = document.getElementById("togglePassword");
+      const toggleIcon = document.getElementById("toggleIcon");
+      const passwordInput = document.getElementById("password");
+      const confirmInput = document.getElementById("confirmarContrasena");
+
+      togglePassword.addEventListener("click", function () {
+        const currentType = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+        passwordInput.setAttribute("type", currentType);
+        confirmInput.setAttribute("type", currentType);
+
         // Cambiar el ícono
         if (currentType === "text") {
           toggleIcon.classList.remove("fa-eye-slash");
@@ -12,10 +159,7 @@
         }
       });
     });
-  });
-</script>
   </script>
 
 </body>
-</html>
 </html>

@@ -48,11 +48,6 @@ validator
     };
 
     try {
-const res = await fetch('/crearusuario', { 
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(data)
-});
       const res = await fetch('/crearusuario', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,7 +73,6 @@ const res = await fetch('/crearusuario', {
         return;
       }
 
-      const json = await res.json();
       // CASO ESPECIAL: Tu servidor devuelve status 500 pero el usuario SÍ se crea
       // Verificamos si el mensaje indica que realmente hubo un problema o es solo un falso error
       
@@ -86,38 +80,29 @@ const res = await fetch('/crearusuario', {
         // Error 500 Y mensaje genérico = probablemente falso error
         !(res.status === 500 && json.message === "Error al crear usuario");
 
-      if (res.ok && json.success) {
-        Swal.fire({
       if (res.ok || res.status === 201 || !isRealError) {
         // Éxito: Status OK O es el falso error conocido
         const SwalInstance = window.MySwal || Swal;
         SwalInstance.fire({
           title: '¡Registro exitoso!',
-          text: json.message || 'El usuario ha sido creado correctamente.',
           text: 'El usuario ha sido creado correctamente.',
           icon: 'success',
           confirmButtonText: 'Aceptar'
         }).then(() => {
           document.getElementById('formRegistro').reset();
-          validator.refresh(); // Limpia los errores visuales
           validator.refresh();
         });
       } else {
-        Swal.fire({
         // Error real
         const SwalInstance = window.MySwal || Swal;
         SwalInstance.fire({
           title: 'Error al registrar',
-          text: json.message || 'Verifica los datos e intenta nuevamente.',
           text: json.message || 'Error al crear usuario',
           icon: 'error',
           confirmButtonText: 'Entendido'
         });
       }
     } catch (err) {
-      Swal.fire({
-        title: 'Error de red',
-        text: err.message,
       console.error('Network error:', err);
       const SwalInstance = window.MySwal || Swal;
       SwalInstance.fire({
@@ -127,5 +112,4 @@ const res = await fetch('/crearusuario', {
         confirmButtonText: 'Cerrar'
       });
     }
-  });
   });

@@ -45,21 +45,39 @@ const validateRegister = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      // En lugar de redirigir aquí, adjuntamos los errores a la petición
-      // para que el controlador decida qué hacer.
-      req.validationErrors = errors.array();
+      // Para registro, devolvemos JSON con los errores específicos
+      return res.status(400).json({
+        error: 'Datos de registro inválidos',
+        details: errors.array().map(err => err.msg)
+      });
     }
     next();
   }
 ];
 
 // ===================
-// VALIDACIÓN DE LOGIN
+// VALIDACIÓN DE LOGIN - CORREGIDA
 // ===================
-// CORRECCIÓN: Definir como constante en lugar de exportar directamente
 const validateLogin = [
-  check('email', 'El email es obligatorio').isEmail(),
-  check('password', 'La contraseña debe tener al menos 6 caracteres').isLength({ min: 6 })
+  body('email')
+    .notEmpty().withMessage('El correo electrónico es obligatorio')
+    .isEmail().withMessage('Ingresa un correo electrónico válido'),
+  
+  body('password')
+    .notEmpty().withMessage('La contraseña es obligatoria')
+    .isLength({ min: 6 }).withMessage('La contraseña debe tener al menos 6 caracteres'),
+
+  // Middleware de validación final para login
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      // Para login, mostramos un mensaje genérico por seguridad
+      return res.status(400).json({
+        error: 'Por favor, verifica que todos los campos estén completos y sean válidos'
+      });
+    }
+    next();
+  }
 ];
 
 // ============================
@@ -71,7 +89,55 @@ const validateDeleteAcc = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ 
+        error: 'Datos requeridos faltantes',
+        details: errors.array() 
+      });
+    }
+    next();
+  }
+];
+
+// ============================
+// VALIDACIÓN DE RECUPERAR CONTRASEÑA
+// ============================
+const validateRecoverPassword = [
+  body('email')
+    .notEmpty().withMessage('El correo electrónico es obligatorio')
+    .isEmail().withMessage('Ingresa un correo electrónico válido'),
+  
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Por favor, ingresa un correo electrónico válido'
+      });
+    }
+    next();
+  }
+];
+
+// ============================
+// VALIDACIÓN DE RESET CONTRASEÑA
+// ============================
+const validateResetPassword = [
+  body('resetCode')
+    .notEmpty().withMessage('El código de recuperación es obligatorio'),
+  
+  body('newPassword')
+    .isLength({ min: 8, max: 12 }).withMessage('La contraseña debe tener entre 8 y 12 caracteres')
+    .matches(/[a-z]/).withMessage('Debe contener al menos una minúscula')
+    .matches(/[A-Z]/).withMessage('Debe contener al menos una mayúscula')
+    .matches(/[0-9]/).withMessage('Debe contener al menos un número')
+    .isAlphanumeric().withMessage('Solo se permiten letras y números'),
+  
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Datos de reseteo inválidos',
+        details: errors.array().map(err => err.msg)
+      });
     }
     next();
   }
@@ -81,9 +147,11 @@ const validateDeleteAcc = [
 module.exports = {
   validateRegister,
   validateLogin,
-  validateDeleteAcc
+  validateDeleteAcc,
+  validateRecoverPassword,
+  validateResetPassword
 };
 
 // Para depuración (opcional)
 console.log('validateLogin is array:', Array.isArray(validateLogin));
-console.log('validateRegister is array:', Array.isArray(validateRegister));
+console.log('validateRegister is array:', Array.isArray(validateRegister)); 

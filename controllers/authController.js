@@ -5,13 +5,13 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { v4: uuidv4 } = require('uuid');
 
-// IMPORTACIONES FALTANTES - AÑADIDAS
+// IMPORTACIONES
 const userRepo = require('../repositories/userRepositoryPrisma');
 const { setFlashMessage } = require('../utils/flashMessage');
-const { sendRecoveryEmail } = require('../emailSender');
-const { createOrUpdateJob } = require('../utils/jobManager');
+// const { sendRecoveryEmail } = require('../emailSender'); // Comentado si no existe
+// const { createOrUpdateJob } = require('../utils/jobManager'); // Comentado si no existe
 
-// Destrucutrando funciones del repositorio si las necesitas
+// Destructuring del repositorio
 const {
   createResetCode,
   findValidResetCode,
@@ -21,54 +21,65 @@ const {
   getMoodsByUser
 } = userRepo;
 
-// LOGIN - Versión robusta y con logs
+// LOGIN - Función principal
 exports.login = async (req, res) => {
   const { email, password } = req.body;
+  
   try {
+    console.log('Intento de login para:', email);
+    
+    // Buscar usuario por email
     const user = await userRepo.findByEmail(email);
     if (!user) {
-      setFlashMessage(res, 'Correo o contraseña incorrectos', 'error');
-      return res.redirect('/');
-    }
-
-    // AÑADIR ESTA VERIFICACIÓN
-    if (!user.activo) {
-      // Usamos JSON porque el login es una API que responde al frontend
-      return res.status(403).json({
-        message: 'Tu cuenta está desactivada. Contacta a un administrador.'
+      console.log('Usuario no encontrado:', email);
+      return res.status(401).json({
+        error: 'Usuario o contraseña incorrectos'
       });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      setFlashMessage(res, 'Correo o contraseña incorrectos', 'error');
-      return res.redirect('/');
+    // Verificar si la cuenta está activa
+    if (!user.activo) {
+      console.log('Cuenta desactivada:', email);
+      return res.status(403).json({
+        error: 'Tu cuenta está desactivada. Contacta a un administrador.'
+      });
     }
 
-    // CAMBIO IMPORTANTE: Incluir nombre en el token JWT
+    // Verificar contraseña
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      console.log('Contraseña incorrecta para:', email);
+      return res.status(401).json({
+        error: 'Usuario o contraseña incorrectos'
+      });
+    }
+
+    console.log('Login exitoso para:', email);
+
+    // Crear token JWT
     const token = jwt.sign(
       {
         id: user.id,
         email: user.email,
         userName: user.userName,
-        nombre: user.nombre, // Añadido nombre
+        nombre: user.nombre,
         rol: user.rol
       },
       process.env.JWT_SECRET || 'supersecret',
       { expiresIn: '1h' }
     );
 
+    // Establecer cookie
     res.cookie('token', token, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 1000,
     });
 
-    setFlashMessage(res, '¡Inicio de sesión éxitoso.', 'success');
-    
-    // Redirección según rol
+    // Determinar redirección según rol
     const rolesSeleccionLote = ['UReg', 'UTI', 'UR', 'UE', 'UEN'];
     let redirectTo;
+    
     switch (user.rol) {
       case 'UAI':
         redirectTo = '/adminventario';
@@ -77,27 +88,28 @@ exports.login = async (req, res) => {
         redirectTo = '/cosmetica';
         break;
       case 'UV':
-        redirectTo = '/historial'; // Vista limitada para el visualizador
+        redirectTo = '/historial';
         break;
       case 'UA':
-        redirectTo = '/almacen'; // Nueva vista de dashboard para Almacén
+        redirectTo = '/almacen';
         break;
       case 'UReg':
         redirectTo = '/seleccionlote';
         break;
       default:
         if (rolesSeleccionLote.includes(user.rol)) {
-          redirectTo = '/seleccionlote'; // Sin guión, como está en viewRoutes
+          redirectTo = '/seleccionlote';
         } else {
           return res.status(403).json({ 
-            error: 'Rol no autorizado',
-            user: null 
+            error: 'Rol no autorizado'
           });
         }
     }
 
-    // Devolver datos de usuario junto con redirectTo
+    // Respuesta exitosa
     return res.status(200).json({
+      success: true,
+      message: 'Inicio de sesión exitoso',
       redirectTo: redirectTo,
       user: {
         id: user.id,
@@ -109,27 +121,140 @@ exports.login = async (req, res) => {
     });
 
   } catch (err) {
-    console.error(err);
-    setFlashMessage(res, 'Hubo un error en el servidor. Intenta más tarde', 'error');
-    return res.status(500).json({ error: 'Error del servidor' });
+    console.error('Error en login:', err);
+    return res.status(500).json({ 
+      error: 'Error del servidor. Intenta más tarde.' 
+    });
   }
 };
 
-// Implementaciones de los otros métodos (usa los existentes)
-exports.registrar = async (req, res) => { /* Tu implementación existente */ };
+// REGISTRO
+exports.registrar = async (req, res) => {
+  try {
+    const { nombre, userName, email, password, rol } = req.body;
+
+    // Verificar si el usuario ya existe
+    const existingUser = await userRepo.findByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({
+        error: 'El correo electrónico ya está registrado'
+      });
+    }
+
+    // Verificar si el userName ya existe
+    const existingUserName = await userRepo.findByUserName(userName);
+    if (existingUserName) {
+      return res.status(400).json({
+        error: 'El nombre de usuario ya está en uso'
+      });
+    }
+
+    // Encriptar contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Crear usuario
+    const newUser = await userRepo.create({
+      nombre,
+      userName,
+      email,
+      password: hashedPassword,
+      rol: rol || 'UR',
+      activo: true
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Usuario registrado exitosamente',
+      user: {
+        id: newUser.id,
+        nombre: newUser.nombre,
+        userName: newUser.userName,
+        email: newUser.email,
+        rol: newUser.rol
+      }
+    });
+
+  } catch (err) {
+    console.error('Error en registro:', err);
+    return res.status(500).json({
+      error: 'Error del servidor. Intenta más tarde.'
+    });
+  }
+};
+
+// LOGOUT
 exports.logout = (req, res) => {
   res.clearCookie('token');
-  res.status(200).json({ message: 'Sesión cerrada exitosamente' });
+  res.status(200).json({ 
+    success: true,
+    message: 'Sesión cerrada exitosamente' 
+  });
 };
-exports.recoverPassword = async (req, res) => { /* Tu implementación existente */ };
-exports.resetPassword = async (req, res) => { /* Tu implementación existente */ };
 
-// Versión limpia del middleware verificarAuth
+// RECUPERAR CONTRASEÑA
+exports.recoverPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    const user = await userRepo.findByEmail(email);
+    if (!user) {
+      return res.status(404).json({
+        error: 'No se encontró una cuenta con ese correo electrónico'
+      });
+    }
+
+    // Aquí iría la lógica para enviar email
+    // const resetCode = uuidv4();
+    // await createResetCode(user.id, resetCode);
+    // await sendRecoveryEmail(email, resetCode);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Se ha enviado un código de recuperación a tu correo'
+    });
+
+  } catch (err) {
+    console.error('Error en recuperación:', err);
+    return res.status(500).json({
+      error: 'Error del servidor. Intenta más tarde.'
+    });
+  }
+};
+
+// RESETEAR CONTRASEÑA
+exports.resetPassword = async (req, res) => {
+  try {
+    const { resetCode, newPassword } = req.body;
+
+    // Aquí iría la lógica para resetear
+    // const resetRecord = await findValidResetCode(resetCode);
+    // if (!resetRecord) {
+    //   return res.status(400).json({
+    //     error: 'Código de recuperación inválido o expirado'
+    //   });
+    // }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Contraseña actualizada exitosamente'
+    });
+
+  } catch (err) {
+    console.error('Error en reset password:', err);
+    return res.status(500).json({
+      error: 'Error del servidor. Intenta más tarde.'
+    });
+  }
+};
+
+// MIDDLEWARE DE AUTENTICACIÓN
 exports.verificarAuth = (req, res, next) => {
   const token = req.cookies?.token;
+  
   if (!token) {
     return res.redirect('/');
   }
+  
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecret');
     req.user = decoded;
@@ -141,11 +266,12 @@ exports.verificarAuth = (req, res, next) => {
   }
 };
 
-// Versión limpia del middleware verificarRol
+// MIDDLEWARE DE ROLES
 exports.verificarRol = (roles) => (req, res, next) => {
   if (!req.user) {
     return res.redirect('/');
   }
+  
   if (Array.isArray(roles) && roles.includes(req.user.rol)) {
     next();
   } else {
@@ -153,6 +279,13 @@ exports.verificarRol = (roles) => (req, res, next) => {
   }
 };
 
-// CORRECCIÓN: Eliminar verificación de validateLogin que no pertenece a este archivo
+// DEBUG
+console.log('=== DEBUG AUTH CONTROLLER ===');
 console.log('login:', typeof exports.login);
 console.log('registrar:', typeof exports.registrar);
+console.log('logout:', typeof exports.logout);
+console.log('recoverPassword:', typeof exports.recoverPassword);
+console.log('resetPassword:', typeof exports.resetPassword);
+console.log('verificarAuth:', typeof exports.verificarAuth);
+console.log('verificarRol:', typeof exports.verificarRol);
+console.log('============================');

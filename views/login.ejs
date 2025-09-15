@@ -45,6 +45,29 @@
     .password-input {
       padding-right: 40px !important;
     }
+
+    /* Estilos mejorados para el mensaje de error */
+    #error-message {
+      font-size: 14px;
+      margin-top: 8px;
+      display: none;
+    }
+
+    #error-message.show {
+      display: block;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Estilo para el spinner en el botón */
+    .btn-loading .spinner-border {
+      width: 1rem;
+      height: 1rem;
+    }
   </style>
 </head>
 
@@ -53,7 +76,6 @@
         <img src="/img/logo_ram.png" alt="Logo de la empresa" class="logo">
         <h2>Iniciar Sesión</h2>
 
-        <!-- CAMBIO CRUCIAL: Quitar el atributo action para manejar el envío con JavaScript -->
         <form id="formLogin" novalidate>
           <div class="mb-3">
             <label for="correo" class="form-label">Correo electrónico:</label>
@@ -65,12 +87,20 @@
             <div class="password-container">
               <input type="password" class="form-control password-input" id="contrasena" name="password" placeholder="Ingresa tu contraseña" />
               <button type="button" class="password-toggle" id="togglePassword" title="Mostrar/Ocultar contraseña">
-                <i class="fas fa-eye" id="toggleIcon"></i>
+                <i class="fas fa-eye-slash" id="toggleIcon"></i>
               </button>
             </div>
           </div>
-          <div id="error-message" class="text-danger mt-2"></div>
-          <button type="submit" class="btn btn-success w-100">Iniciar Sesión</button>
+          
+          <div id="error-message" class="alert alert-danger" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <span id="error-text"></span>
+          </div>
+          
+          <button type="submit" class="btn btn-success w-100" id="loginBtn">
+            <span class="btn-text">Iniciar Sesión</span>
+            <span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true"></span>
+          </button>
         </form>
 
         <div class="text-end mt-3">
@@ -92,17 +122,45 @@
     const emailInput = document.getElementById("correo");
     const passwordInput = document.getElementById("contrasena");
     const errorMessage = document.getElementById("error-message");
+    const errorText = document.getElementById("error-text");
+    const loginBtn = document.getElementById("loginBtn");
+    const btnText = loginBtn.querySelector('.btn-text');
+    const spinner = loginBtn.querySelector('.spinner-border');
+    
+    // Función para mostrar errores
+    function showError(message) {
+      errorText.textContent = message;
+      errorMessage.classList.add('show');
+    }
+    
+    // Función para ocultar errores
+    function hideError() {
+      errorMessage.classList.remove('show');
+    }
+    
+    // Función para manejar el estado del botón
+    function setLoadingState(loading) {
+      if (loading) {
+        loginBtn.disabled = true;
+        btnText.textContent = 'Procesando...';
+        spinner.classList.remove('d-none');
+        loginBtn.classList.add('btn-loading');
+      } else {
+        loginBtn.disabled = false;
+        btnText.textContent = 'Iniciar Sesión';
+        spinner.classList.add('d-none');
+        loginBtn.classList.remove('btn-loading');
+      }
+    }
     
     // Funcionalidad del botón de mostrar/ocultar contraseña
     const togglePassword = document.getElementById("togglePassword");
     const toggleIcon = document.getElementById("toggleIcon");
     
     togglePassword.addEventListener("click", function() {
-      // Cambiar el tipo de input
       const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
       passwordInput.setAttribute("type", type);
       
-      // Cambiar el ícono
       if (type === "text") {
         toggleIcon.classList.remove("fa-eye-slash");
         toggleIcon.classList.add("fa-eye");
@@ -120,53 +178,121 @@
       emailInput.value = savedEmail;
     }
 
-    // Un solo listener para el envío del formulario
+    // Ocultar error cuando el usuario empiece a escribir
+    emailInput.addEventListener('input', hideError);
+    passwordInput.addEventListener('input', hideError);
+
+    // Validación básica del formulario
+    function validateForm() {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+      
+      if (!email) {
+        showError('Por favor, ingresa tu correo electrónico');
+        emailInput.focus();
+        return false;
+      }
+      
+      if (!password) {
+        showError('Por favor, ingresa tu contraseña');
+        passwordInput.focus();
+        return false;
+      }
+      
+      return true;
+    }
+
+    // Manejo del envío del formulario
     form.addEventListener("submit", function(e) {
       e.preventDefault();
       
-      // Guardar email
-      localStorage.setItem("savedEmail", emailInput.value);
+      // Ocultar errores previos
+      hideError();
       
-      // Deshabilitar botón para evitar doble envío
-      const submitBtn = form.querySelector('button[type="submit"]');
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Procesando...';
+      // Validar formulario
+      if (!validateForm()) {
+        return;
+      }
+      
+      // Guardar email
+      localStorage.setItem("savedEmail", emailInput.value.trim());
+      
+      // Activar estado de carga
+      setLoadingState(true);
       
       // Enviar solicitud
       fetch('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
-          email: emailInput.value,
-          password: passwordInput.value
+          email: emailInput.value.trim(),
+          password: passwordInput.value.trim()
         })
       })
-      .then(response => response.json())
+      .then(response => {
+        console.log('Status:', response.status);
+        
+        // Verificar si la respuesta es JSON
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("La respuesta del servidor no es JSON válida");
+        }
+        
+        return response.json();
+      })
       .then(data => {
         console.log('Respuesta login:', data);
         
-        if (data.redirectTo) {
-          // Guardar usuario en localStorage
+        if (data.success && data.redirectTo) {
+          // Login exitoso
           if (data.user) {
             console.log('Usuario guardado:', data.user);
             localStorage.setItem('usuarioActual', JSON.stringify(data.user));
           }
           
-          // Redirección directa sin SweetAlert
           console.log('Redirigiendo a:', data.redirectTo);
           window.location.href = data.redirectTo;
-        } else if (data.error) {
-          errorMessage.textContent = data.error;
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Iniciar Sesión';
+          
+        } else {
+          // Error en las credenciales o validación
+          const errorMsg = data.error || data.message || 'Usuario o contraseña incorrectos';
+          showError(errorMsg);
+          setLoadingState(false);
         }
       })
       .catch(error => {
         console.error('Error login:', error);
-        errorMessage.textContent = 'Error de conexión';
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Iniciar Sesión';
+        
+        // Determinar el mensaje de error apropiado
+        let errorMsg = 'Usuario o contraseña incorrectos';
+        
+        if (error.message.includes('JSON') || error.message.includes('fetch')) {
+          errorMsg = 'Error de conexión con el servidor. Intenta nuevamente.';
+        }
+        
+        showError(errorMsg);
+        setLoadingState(false);
       });
+    });
+
+    // Efecto visual al enfocar los inputs
+    emailInput.addEventListener('focus', function() {
+      this.parentElement.classList.add('focused');
+    });
+    
+    emailInput.addEventListener('blur', function() {
+      this.parentElement.classList.remove('focused');
+    });
+    
+    passwordInput.addEventListener('focus', function() {
+      this.parentElement.parentElement.classList.add('focused');
+    });
+    
+    passwordInput.addEventListener('blur', function() {
+      this.parentElement.parentElement.classList.remove('focused');
     });
   });
 </script>

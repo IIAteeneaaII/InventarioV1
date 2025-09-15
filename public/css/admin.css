@@ -404,3 +404,23 @@
             background-color: #fab1a0;
             color: #c23616;
         }
+        .password-container {
+  position: relative;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 38px;
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0;
+  font-size: 16px;
+}
+
+.password-toggle:hover {
+  color: #495057;
+}
+

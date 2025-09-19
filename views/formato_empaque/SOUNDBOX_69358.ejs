@@ -8,6 +8,7 @@
   <!-- CSS base existente -->
   <link rel="stylesheet" href="/css/formatoC.css" />
   <link rel="stylesheet" href="/css/escaneo.css">
+  <link rel="stylesheet" href="/css/modal-filtros.css">
 
   <!-- Librerías -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
@@ -32,7 +33,7 @@
     </div>
 
     <div class="form-section">
-      <h1>SOUNDBOX - 69358</h1>
+      <h1><%= skuNombre %> - <%= skuItem %></h1>
 
       <!-- Instrucciones -->
       <div class="instrucciones">
@@ -149,7 +150,8 @@
   <script src="/js/cerrarsesion.js"></script>
   <script src="/js/formato-captura.js"></script>
 
-  <!-- Referencias a tus JS (sin lógica inline) -->
+
+    <!-- Referencias a tus JS (sin lógica inline) -->
   <script src="/js/scrap-toggle.js" defer></script>
   <script src="/js/historial-search.js" defer></script>
 
@@ -161,19 +163,7 @@
       const descargarBtn = document.getElementById("descargar-btn");
       if (descargarBtn) {
         descargarBtn.addEventListener("click", function () {
-          const tabla = document.querySelector(".registros-table");
-          if (!tabla) {
-            Swal.fire("Error", "No se encontró la tabla de registros.", "error");
-            return;
-          }
-          const tablaHTML = tabla.outerHTML.replace(/ /g, '%20');
-          const nombreArchivo = 'Empaque_4K_Alexa.xls';
-          const enlaceDescarga = document.createElement('a');
-          enlaceDescarga.href = 'data:application/vnd.ms-excel,' + tablaHTML;
-          enlaceDescarga.download = nombreArchivo;
-          document.body.appendChild(enlaceDescarga);
-          enlaceDescarga.click();
-          document.body.removeChild(enlaceDescarga);
+          mostrarModalFiltros();
         });
       }
 
@@ -181,6 +171,253 @@
       if (volverBtn) {
         volverBtn.addEventListener("click", function () {
           window.history.back();
+        });
+      }
+
+      // ===== MODAL DE FILTROS PARA DESCARGA =====
+      
+      function mostrarModalFiltros() {
+        const today = new Date();
+        const todayFormatted = today.toLocaleDateString('es-ES'); // Formato dd/mm/yyyy
+        const todayISO = today.toISOString().split('T')[0]; // Para el input date
+        
+        Swal.fire({
+          title: '<i class="fas fa-file-excel" style="color: #28a745;"></i> Filtros para Descarga Excel',
+          width: '600px',
+          background: '#f8f9fa',
+          color: '#495057',
+          customClass: {
+            popup: 'custom-swal-popup',
+            title: 'custom-swal-title',
+            content: 'custom-swal-content'
+          },
+          html: `
+            <div class="filter-container">
+              <div class="filter-section">
+                <h4><i class="fas fa-calendar-alt"></i> Período de Tiempo</h4>
+                <div class="filter-grid">
+                  <div class="filter-input-group clickable-date-group" onclick="document.getElementById('swal-start-date').showPicker()">
+                    <label for="swal-start-date"><i class="fas fa-calendar-day"></i>Fecha Desde:</label>
+                    <input type="date" id="swal-start-date" value="${todayISO}" class="filter-input">
+                    <div class="date-display">${todayFormatted}</div>
+                  </div>
+                  <div class="filter-input-group clickable-date-group" onclick="document.getElementById('swal-end-date').showPicker()">
+                    <label for="swal-end-date"><i class="fas fa-calendar-check"></i>Fecha Hasta:</label>
+                    <input type="date" id="swal-end-date" value="${todayISO}" class="filter-input">
+                    <div class="date-display">${todayFormatted}</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="filter-section">
+                <h4><i class="fas fa-filter"></i> Filtros Adicionales</h4>
+                <div class="filter-single-column">
+                  <div class="filter-input-group">
+                    <label for="swal-estado"><i class="fas fa-check-circle"></i>Estado:</label>
+                    <select id="swal-estado" class="filter-select">
+                      <option value="">📋 Todos los estados</option>
+                      <option value="OK">✅ OK</option>
+                      <option value="SCRAP">❌ SCRAP</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `,
+          showCancelButton: true,
+          confirmButtonText: '<i class="fas fa-download"></i> Generar Excel',
+          cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
+          confirmButtonColor: '#28a745',
+          cancelButtonColor: '#dc3545',
+          buttonsStyling: true,
+          customClass: {
+            confirmButton: 'custom-confirm-btn',
+            cancelButton: 'custom-cancel-btn'
+          },
+          didOpen: () => {
+            // Actualizar displays cuando cambien las fechas
+            const startDateInput = document.getElementById('swal-start-date');
+            const endDateInput = document.getElementById('swal-end-date');
+            
+            function updateDateDisplay(input, displayElement) {
+              if (input.value) {
+                const date = new Date(input.value + 'T00:00:00');
+                displayElement.textContent = date.toLocaleDateString('es-ES');
+              }
+            }
+            
+            startDateInput.addEventListener('change', function() {
+              const display = this.parentElement.querySelector('.date-display');
+              updateDateDisplay(this, display);
+            });
+            
+            endDateInput.addEventListener('change', function() {
+              const display = this.parentElement.querySelector('.date-display');
+              updateDateDisplay(this, display);
+            });
+          },
+          preConfirm: () => {
+            const startDate = document.getElementById('swal-start-date').value;
+            const endDate = document.getElementById('swal-end-date').value;
+            const estado = document.getElementById('swal-estado').value;
+            
+            if (!startDate || !endDate) {
+              Swal.showValidationMessage('⚠️ Por favor seleccione un rango de fechas válido');
+              return false;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+              Swal.showValidationMessage('⚠️ La fecha de inicio no puede ser mayor que la fecha final');
+              return false;
+            }
+            
+            return { startDate, endDate, estado };
+          },
+        }).then((result) => {
+          if (result.isConfirmed) {
+            descargarExcelFiltrado(result.value);
+          }
+        });
+      }
+      
+      function descargarExcelFiltrado(filtros) {
+        const tabla = document.querySelector('.registros-table');
+        if (!tabla) {
+          Swal.fire('Error', 'No se encontró la tabla de registros.', 'error');
+          return;
+        }
+        
+        // Clonar la tabla para filtrar
+        const tablaClonada = tabla.cloneNode(true);
+        const filas = tablaClonada.querySelectorAll('tbody tr');
+        const tbody = tablaClonada.querySelector('tbody');
+        tbody.innerHTML = '';
+        
+        let registrosFiltrados = 0;
+        
+        filas.forEach(fila => {
+          const fechaTexto = fila.cells[2].textContent.trim();
+          const estadoTexto = fila.cells[3].textContent.trim();
+          const usuarioTexto = fila.cells[0].textContent.trim();
+          
+          // Parsear fecha (formato: DD/MM/YYYY, HH:MM:SS)
+          const fechaParts = fechaTexto.split(',')[0].split('/');
+          const fechaRegistro = new Date(fechaParts[2], fechaParts[1] - 1, fechaParts[0]);
+          const fechaInicio = new Date(filtros.startDate);
+          const fechaFin = new Date(filtros.endDate + 'T23:59:59');
+          
+          let incluir = true;
+          
+          // Filtro por fecha
+          if (fechaRegistro < fechaInicio || fechaRegistro > fechaFin) {
+            incluir = false;
+          }
+          
+          // Filtro por estado
+          if (filtros.estado && !estadoTexto.includes(filtros.estado)) {
+            incluir = false;
+          }
+          
+          // Solo incluir registros del usuario actual (empaque)
+          if (usuarioTexto !== window.user.nombre) {
+            incluir = false;
+          }
+          
+          if (incluir) {
+            tbody.appendChild(fila.cloneNode(true));
+            registrosFiltrados++;
+          }
+        });
+        
+        if (registrosFiltrados === 0) {
+          Swal.fire({
+            title: '📊 Sin Resultados',
+            html: `
+              <div style="padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+                <p style="color: #6c757d; font-size: 16px; margin-bottom: 15px;">
+                  No se encontraron registros que coincidan con los filtros seleccionados.
+                </p>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #17a2b8;">
+                  <p style="color: #495057; margin: 0; font-size: 14px;">
+                    <strong>💡 Sugerencia:</strong> Intente ampliar el rango de fechas o modificar los filtros.
+                  </p>
+                </div>
+              </div>
+            `,
+            icon: 'info',
+            confirmButtonText: '🔄 Intentar de nuevo',
+            confirmButtonColor: '#17a2b8',
+            customClass: {
+              popup: 'custom-info-popup'
+            }
+          });
+          return;
+        }
+        
+        // Generar nombre de archivo dinámico
+        const skuText = document.querySelector('.form-section h1').textContent.trim().replace(' - ', '_');
+        const fechaFormateada = filtros.startDate === filtros.endDate ? filtros.startDate : filtros.startDate + '_a_' + filtros.endDate;
+        const nombreArchivo = `Empaque_${skuText}_${fechaFormateada}.xls`;
+        
+        // Crear enlace de descarga
+        const tablaHTML = tablaClonada.outerHTML.replace(/ /g, '%20');
+        const enlaceDescarga = document.createElement('a');
+        enlaceDescarga.href = 'data:application/vnd.ms-excel,' + tablaHTML;
+        enlaceDescarga.download = nombreArchivo;
+        document.body.appendChild(enlaceDescarga);
+        enlaceDescarga.click();
+        document.body.removeChild(enlaceDescarga);
+        
+        // Mostrar confirmación
+        Swal.fire({
+          title: '🎉 ¡Descarga Completada!',
+          width: '550px',
+          background: '#f8f9fa',
+          html: `
+            <div class="success-container">
+              <div class="success-header">
+                <h3 style="margin: 0; font-size: 18px;">
+                  <i class="fas fa-file-excel" style="margin-right: 10px;"></i>
+                  Archivo Excel Generado Exitosamente
+                </h3>
+              </div>
+              <div class="success-details">
+                <div class="detail-row">
+                  <div class="detail-label">
+                    <i class="fas fa-file-signature"></i>
+                    Nombre del Archivo:
+                  </div>
+                  <div class="detail-value">${nombreArchivo}</div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label">
+                    <i class="fas fa-database"></i>
+                    Total de Registros:
+                  </div>
+                  <div class="detail-value">${registrosFiltrados}</div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label">
+                    <i class="fas fa-calendar-range"></i>
+                    Período:
+                  </div>
+                  <div class="detail-value">${filtros.startDate} al ${filtros.endDate}</div>
+                </div>
+              </div>
+              <div class="footer-note">
+                <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
+                El archivo se ha descargado automáticamente en su carpeta de descargas
+              </div>
+            </div>
+          `,
+          icon: 'success',
+          confirmButtonText: '<i class="fas fa-check"></i> Perfecto',
+          confirmButtonColor: '#28a745',
+          customClass: {
+            popup: 'custom-success-popup'
+          },
+          timer: 5000,
+          timerProgressBar: true
         });
       }
     });

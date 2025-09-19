@@ -293,31 +293,24 @@ router.post('/seleccionar-sku', (req, res) => {
 router.get('/:carpeta/:sku', async (req, res, next) => {
   const { carpeta, sku } = req.params;
 
-  // Middleware de validación manual para evitar problemas con path-to-regexp
-  // y para no interceptar peticiones a /js, /css, etc.
-  const carpetasValidas = ['formato_empaque', 'formato_registro', 'formato_general'];
+  // Agregar formato_reparacion a las carpetas válidas
+  const carpetasValidas = ['formato_empaque', 'formato_registro', 'formato_general', 'formato_reparacion'];
   if (!carpetasValidas.includes(carpeta)) {
-    return next(); // IMPORTANTE: Si no es una carpeta de formato, pasa a la siguiente ruta (ej. express.static).
+    return next();
   }
 
   const user = req.user;
   console.log(`Usuario ${user.userName} (${user.rol}) accediendo a ${carpeta}/${sku}`);
 
-  // Importamos el controlador para verificar acceso
   const formatoController = require('../controllers/formatoController');
-
-  // Verificar si el rol tiene acceso a esta carpeta
   const tieneAcceso = formatoController.verificarAccesoCarpeta(user.rol, carpeta);
 
   if (!tieneAcceso) {
-    // Determinar a qué carpeta debería acceder este rol
     const carpetaCorrecta = formatoController.obtenerCarpetaPorRol(user.rol);
-
     if (carpetaCorrecta) {
       console.log(`Redirigiendo a ${carpetaCorrecta}/${sku}`);
       return res.redirect(`/${carpetaCorrecta}/${sku}`);
     }
-
     return res.status(403).render('error', {
       message: 'No tienes acceso a esta vista',
       error: { status: 403 },
@@ -325,30 +318,66 @@ router.get('/:carpeta/:sku', async (req, res, next) => {
     });
   }
 
-  const viewsDir = path.join(__dirname, '..', 'views', carpeta);
   try {
+    // 1. BUSCAR EL SKU EN LA BASE DE DATOS
+    const skuData = await prisma.catalogoSKU.findFirst({
+      where: { skuItem: sku }
+    });
+
+    if (!skuData) {
+      console.error(`SKU ${sku} no encontrado en la base de datos`);
+      return res.status(404).render('error', {
+        message: `SKU ${sku} no encontrado`,
+        error: { status: 404 },
+        user: user
+      });
+    }
+
+    console.log(`✅ SKU encontrado: ID=${skuData.id}, Nombre=${skuData.nombre}, Item=${skuData.skuItem}`);
+
+    // 2. BUSCAR ARCHIVO DE VISTA
+    const viewsDir = path.join(__dirname, '..', 'views', carpeta);
     if (!fs.existsSync(viewsDir)) {
       console.error(`La carpeta ${carpeta} no existe`);
       return res.status(404).send(`Carpeta ${carpeta} no encontrada`);
     }
+
     const files = fs.readdirSync(viewsDir);
     const fileMatch = files.find(f => f.includes(sku) && f.endsWith('.ejs'));
-    if (fileMatch) {
-      console.log(`Renderizando vista: ${carpeta}/${fileMatch.replace('.ejs', '')}`);
-      const registros = await prisma.registro.findMany({
-        where: { userId: user.id }, // Solo registros del usuario actual
-        orderBy: { createdAt: 'desc' },
-        take: 50, // Limitar a los últimos 50 para no sobrecargar
-        include: { user: { select: { nombre: true } } }
-      });
-      return res.render(`${carpeta}/${fileMatch.replace('.ejs', '')}`, { user: req.user, registros });
-    } else {
-      console.error(`No se encontró archivo para SKU ${sku} en la carpeta ${carpeta}`);
+    
+    if (!fileMatch) {
+      console.error(`No se encontró archivo para SKU ${sku} en ${carpeta}`);
+      console.error(`Archivos disponibles:`, files);
       return res.status(404).send(`Vista no encontrada para SKU ${sku} en ${carpeta}`);
     }
+
+    console.log(`✅ Renderizando vista: ${carpeta}/${fileMatch.replace('.ejs', '')}`);
+
+    // 3. BUSCAR REGISTROS (mantener aislamiento por usuario)
+    const registros = await prisma.registro.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: { user: { select: { nombre: true } } }
+    });
+
+    // 4. PASAR INFORMACIÓN DEL SKU A LA VISTA
+    return res.render(`${carpeta}/${fileMatch.replace('.ejs', '')}`, { 
+      user: req.user, 
+      registros,
+      sku: skuData,           // Objeto completo del SKU
+      skuId: skuData.id,      // ID numérico
+      skuItem: sku,           // String del parámetro URL
+      skuNombre: skuData.nombre // Nombre del SKU
+    });
+
   } catch (err) {
-    console.error(`Error al buscar vista para SKU ${sku} en ${carpeta}:`, err);
-    return res.status(500).send('Error interno al buscar la vista.');
+    console.error(`Error al procesar SKU ${sku} en ${carpeta}:`, err);
+    return res.status(500).render('error', {
+      message: 'Error interno al buscar la vista',
+      error: { status: 500 },
+      user: user
+    });
   }
 });
 

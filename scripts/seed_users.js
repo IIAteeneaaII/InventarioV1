@@ -12,17 +12,16 @@ async function main() {
     { nombre: 'Registro', userName: 'Registro', email: 'registroram756@gmail.com', rol: 'UReg' },
     { nombre: 'Test Inicial', userName: 'Testini', email: 'testinicialram@gmail.com', rol: 'UTI' },
     { nombre: 'Cosmetica', userName: 'Cosmetica', email: 'cosmeticaram78@gmail.com', rol: 'UC' },
-    { nombre: 'Limpieza', userName: 'Limpieza', email: 'limpiezaram27@gmail.com', rol: 'UL' },
     { nombre: 'Retest', userName: 'Retest', email: 'retestram@gmail.com', rol: 'UR' },
     { nombre: 'Ensamble', userName: 'Ensamble', email: 'ramensamble@gmail.com', rol: 'UEN' },
     { nombre: 'Empaque', userName: 'Empaque', email: 'empaqueram@gmail.com', rol: 'UE' },
 
     // UAI (usuarios administrativos)
-    { nombre: 'Usuario UAI 1', userName: 'agomez', email: 'agomez_nextgen@outlook.com', rol: 'UAI' },
+    { nombre: 'Usuario UAI 1', userName: 'agomez', email: 'agomez_nextgen@outlook.com', rol: 'UA' },
     { nombre: 'Usuario UAI 2', userName: 'acorrea', email: 'acorrea_nextgen@outlook.com', rol: 'UAI' },
     { nombre: 'Usuario UAI 3', userName: 'alopez', email: 'alopez_nextgen@outlook.com', rol: 'UAI' },
     { nombre: 'Usuario UAI 4', userName: 'nextgenit15', email: 'nextgenit15@outlook.com', rol: 'UAI' },
-    { nombre: 'Usuario UAI 5', userName: 'totalplay', email: 'totalplay@ramelectronics.com.mx', rol: 'UAI' },
+    { nombre: 'Usuario UAI 5', userName: 'totalplay', email: 'totalplay@ramelectronics.com.mx', rol: 'UV' },
   ];
 
   for (const u of usuarios) {

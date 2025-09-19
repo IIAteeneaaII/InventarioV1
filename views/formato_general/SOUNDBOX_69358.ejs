@@ -12,9 +12,10 @@
   <!-- Librerías -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"/>
+  <!-- Cargar SweetAlert2 ANTES del controlador -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="/js/sweetalert-controller.js"></script>
-</head>
-<body>
+</head><body>
   <div class="app-container">
     <!-- Sección del usuario -->
     <div class="top-right">
@@ -29,7 +30,7 @@
 
     <!-- Sección del formulario -->
     <div class="form-section">
-      <h1>SOUNDBOX - 69358</h1>
+      <h1><%= skuNombre %> - <%= skuItem %></h1>
        <!-- Instrucciones -->
       <div class="instrucciones">
         <p><strong>Instrucciones:</strong></p>
@@ -83,9 +84,7 @@
         <i class="fas fa-arrow-left"></i> Volver
       </button>
 
-      <button class="btn-completar" id="finalizar-lote-btn" style="display: none;">
-        <i class="fas fa-check-double"></i> FINALIZAR LOTE
-      </button>
+<!-- Finalizar lote-->
     </div>
 
     <!-- Sección de la tabla -->
@@ -138,9 +137,7 @@
     </div>
   </div>
 
-  <!-- Librerías -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
+  
   <!-- Scripts -->
   <script src="/js/cerrarsesion.js"></script>
   <script src="/js/formato-captura.js"></script>

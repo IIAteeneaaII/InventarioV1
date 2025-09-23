@@ -72,6 +72,22 @@ exports.guardarRegistro = async (req, res) => {
   if (!rolConfig.fase) return res.status(403).json({ error: 'Tu rol no tiene una fase de proceso asignada.' });
   // Comentamos esta restricción para permitir que el rol UE use este endpoint también
   // if (userRol === 'UE') return res.status(403).json({ error: 'Usa el endpoint de empaque para registrar en la fase de Empaque.' });
+  
+  // Validacion de largo por sku
+  async function getExpectedSnLengthBySkuId(txOrClient, skuId) {
+    const sku = await txOrClient.catalogoSKU.findUnique({
+      where: { id: skuId },
+      select: { nombre: true }
+    });
+    const nombre = (sku?.nombre || '').toUpperCase();
+
+    if (nombre.includes('4KM37')) return 18;   // SKU tipo “4K”
+    if (nombre.includes('4KM36B')) return 18;   // SKU tipo “4K”
+    if (nombre.includes('4KM36A')) return 18;   // SKU tipo “4K”
+    if (nombre.includes('4KALEXA')) return 18;   // SKU tipo “4K”
+    if (nombre.includes('ZTE')) return 14;  // SKU tipo “ZTE”
+    return 16;                               // demás SKU
+  }
 
   try {
     // anti‑spam 6s
@@ -114,6 +130,11 @@ exports.guardarRegistro = async (req, res) => {
         // RESOLVER id real del catálogo (NO usar el código 69643)
         const skuId = await resolveSkuId(tx, sku);
 
+        // validar largo SN por SKU
+        const expectedLen = await getExpectedSnLengthBySkuId(tx, skuId);
+        if (sn.length !== expectedLen) {
+          throw new Error(`El S/N para este SKU debe tener ${expectedLen} caracteres (recibido ${sn.length}).`);
+        }
         // evitar SN duplicado
         const ya = await tx.modem.findUnique({ where: { sn } });
         if (ya) throw new Error(`El módem ${sn} ya existe.`);
@@ -149,6 +170,12 @@ exports.guardarRegistro = async (req, res) => {
         // Avance de fase (UTI / UEN / UR / UE)
         modem = await tx.modem.findUnique({ where: { sn } });
         if (!modem) throw new Error(`Módem ${sn} no encontrado.`);
+
+        // validar largo SN por SKU del módem
+        const expectedLen = await getExpectedSnLengthBySkuId(tx, modem.skuId);
+        if (sn.length !== expectedLen) {
+          throw new Error(`El S/N para este SKU debe tener ${expectedLen} caracteres (recibido ${sn.length}).`);
+        }
 
         // Lógica especial para empaque (UE)
         if (userRol === 'UE') {

@@ -169,8 +169,6 @@ exports.guardarRegistro = async (req, res) => {
         modem = await tx.modem.findUnique({ where: { sn } });
         if (!modem) throw new Error(`Módem ${sn} no encontrado.`);
 
-<<<<<<< Updated upstream
-=======
         // 🚨 VALIDACIÓN CRÍTICA: Verificar si el modem está en SCRAP
         if (modem.faseActual === 'SCRAP') {
           // Solo URep puede procesar modems en SCRAP para reparación
@@ -213,7 +211,6 @@ exports.guardarRegistro = async (req, res) => {
           modem.motivoScrap = null;
         }
 
->>>>>>> Stashed changes
         // Lógica especial para empaque (UE)
         if (userRol === 'UE') {
           // Para UE, el modem ya debe estar en fase RETEST para pasar a EMPAQUE

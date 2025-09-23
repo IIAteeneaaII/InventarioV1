@@ -106,9 +106,17 @@ router.get('/registro',
 
 // Ruta principal para selección de lote
 router.get('/seleccionlote', 
-  verificarRol(['UA', 'UTI', 'UR', 'UE', 'UEN', 'UReg']),
+  verificarRol(['UA', 'UTI', 'UR', 'UE', 'UEN', 'UReg', 'URep']),
   (req, res) => {
     res.render('seleccion_modelo', { user: req.user });
+  }
+);
+
+// Dashboard para reparación
+router.get('/reparacion', 
+  verificarRol(['URep', 'UTI', 'UA']),
+  (req, res) => {
+      res.render('seleccion_modelo', { user: req.user });
   }
 );
 
@@ -361,14 +369,24 @@ router.get('/:carpeta/:sku', async (req, res, next) => {
       include: { user: { select: { nombre: true } } }
     });
 
-    // 4. PASAR INFORMACIÓN DEL SKU A LA VISTA
+    // 4. OBTENER CÓDIGOS DE DIAGNÓSTICO para SCRAP (solo para formato_general)
+    let codigosDiagnostico = [];
+    if (carpeta === 'formato_general') {
+      codigosDiagnostico = await prisma.codigoDano.findMany({
+        orderBy: { codigo: 'asc' },
+        select: { id: true, codigo: true, descripcion: true }
+      });
+    }
+
+    // 5. PASAR INFORMACIÓN DEL SKU A LA VISTA
     return res.render(`${carpeta}/${fileMatch.replace('.ejs', '')}`, { 
       user: req.user, 
       registros,
       sku: skuData,           // Objeto completo del SKU
       skuId: skuData.id,      // ID numérico
       skuItem: sku,           // String del parámetro URL
-      skuNombre: skuData.nombre // Nombre del SKU
+      skuNombre: skuData.nombre, // Nombre del SKU
+      codigosDiagnostico      // Códigos de diagnóstico para SCRAP
     });
 
   } catch (err) {

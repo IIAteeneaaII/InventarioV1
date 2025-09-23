@@ -3,27 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CAPTURA NUMEROS DE SERIE</title>
+    <title>CAPTURA REPARACIONES - Producto</title>
     <link rel="stylesheet" href="/css/formatoD.css" />    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <!-- Cargar SweetAlert2 ANTES del controlador -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="/js/sweetalert-controller.js"></script>
-</head><body>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/js/sweetalert-controller.js"></script>
+</head>
+<body>
     <div class="app-container">
+        <!-- Sección del usuario -->
+        <div class="top-right">
+            <img src="/img/usuario.webp" alt="Usuario" class="user-icon" />
+            <div class="username" id="username-display"><%= user.userName %></div>
+            <div class="user-info">
+                <div class="logout-container">
+                    <i class="fas fa-right-from-bracket logout-icon" id="logout-icon" title="Cerrar sesión"></i>
+                </div>
+            </div>
+        </div>
+
         <!-- Sección del formulario -->
-<div class="top-right">
-  <img src="/img/usuario.webp" alt="Usuario" class="user-icon" />
-  <div class="username" id="username-display"><%= user.userName %></div>
-  <div class="user-info">
-    <div class="logout-container">
-      <i class="fas fa-right-from-bracket logout-icon" id="logout-icon" title="Cerrar sesión"></i>
-    </div>
-  </div>
-</div>
         <div class="form-section">
             <h1><%= skuNombre %> - <%= skuItem %></h1>
+            
+            <!-- Instrucciones -->
+            <div class="instrucciones">
+                <p><strong>Instrucciones para Reparación:</strong></p>
+                <ul>
+                    <li>Escanee o ingrese el número de serie (S/N).</li>
+                    <li>Seleccione el código de reparación aplicado.</li>
+                    <li>Seleccione el diagnóstico del problema encontrado.</li>
+                    <li>Seleccione el nivel de reparación realizada.</li>
+                    <li>Presione ENTER o "Guardar" para registrar la reparación.</li>
+                </ul>
+            </div>
+
             <div class="form-group">
                 <label>Escanear:</label>
             </div>
@@ -32,106 +47,139 @@
                 <label class="required">S/N</label>
                 <input type="text" id="sn-input" placeholder="Ingrese el número de serie">
             </div>
-            
-            <div class="form-group">
-                <label>Reparaciones</label>
-                <input type="text" id="reparaciones-input" placeholder="Ingrese código de reparación">
-            </div>
-            
 
+            <div class="form-group">
+                <label class="required">SKU</label>
+                <input type="text" id="sku-input" placeholder="Ingrese el SKU del producto">
+            </div>
             
             <div class="form-group">
-<input type="text" id="scrap-input" name="scrap" hidden />
-                <label class="required">Diagnostico</label>                
-                <select id="motivo-scrap">
-                    <option value="">Seleccione un Diagnostico</option>
-                    <option value="Se Pasma">D03</option>
-                    <option value="Conectores">D014</option>
-                    <option value="Sin Conexion GPON (LOS)">D015</option>
-                    <option value="Sin Wifi">D017</option>
-                    <option value="Antena Dañada">D022</option>
-                    <option value="Botones Dañados">D023</option>
-                    <option value="Indicadores Led Dañados">D024</option>
+                <label class="required">Reparaciones</label>
+                <select id="reparaciones-input" name="reparaciones">
+                    <option value="">Seleccione código de reparación</option>
+                    <!-- Las opciones se cargarán dinámicamente desde el backend -->
                 </select>
             </div>
+            
             <div class="form-group">
-<input type="text" id="scrap-input" name="scrap" hidden />
-                <label class="required">Nivel</label>                
-                <select id="motivo-scrap">
-                    <option value="">Seleccione Descripción de Nivel</option>
-                    <option value="Cambio de Conectores">N1</option>
-                    <option value="Reparación a Nivel Componente TH">N2</option>
-                    <option value="Reparación a Nivel Componente SMT">N2+</option>
+                <label class="required">Diagnóstico</label>
+                <select id="diagnostico-input" name="diagnostico">
+                    <option value="">Seleccione un diagnóstico</option>
+                    <!-- Las opciones se cargarán dinámicamente desde el backend -->
                 </select>
             </div>
-            <!-- Botón de guardado con el ID correcto -->
-            <button class="btn-confirmar" id="guardar-btn">
-            <i class="fas fa-save"></i> GUARDAR REGISTRO
+
+            <div class="form-group">
+                <label class="required">Nivel</label>
+                <select id="nivel-input" name="nivel">
+                    <option value="">Seleccione nivel de reparación</option>
+                    <!-- Las opciones se cargarán dinámicamente desde el backend -->
+                </select>
+            </div>
+
+            <!-- Motivo de Scrap (oculto inicialmente) -->
+            <div class="form-group motivo-scrap-group">
+                <input type="text" id="scrap-input" name="scrap" hidden />
+                <label class="required" for="motivo-scrap">Motivo de Scrap</label>
+                <select id="motivo-scrap" name="motivoScrap">
+                    <option value="">Seleccione un motivo</option>
+                    <!-- Las opciones se cargarán dinámicamente desde el backend -->
+                </select>
+            </div>
+
+            <!-- Botón SCRAP ON/OFF -->
+            <button class="btn-toggle is-off" id="autoenter-toggle" title="SCRAP desactivado">
+                <i class="fas fa-keyboard"></i> SCRAP: OFF
             </button>
+
             <div class="status-indicator"><span class="ready">Listo para escanear</span></div>
 
+            <!-- Botón Guardar -->
+            <button class="btn-confirmar" id="guardar-btn">
+                <i class="fas fa-save"></i> GUARDAR REPARACIÓN
+            </button>
 
             <button id="volver-btn" class="btn-secondary">
                 <i class="fas fa-arrow-left"></i> Volver
             </button>
+
             <button class="btn-completar" id="finalizar-lote-btn" style="display: none;">
                 <i class="fas fa-check-double"></i> FINALIZAR LOTE
             </button>
-            
         </div>
-        
+
         <!-- Sección de la tabla -->
         <div class="table-section">
-            <h1>Historial de Registros</h1>
-            
+            <h1>Historial de Reparaciones</h1>
+
+            <!-- Barra de búsqueda -->
+            <div class="historial-search">
+                <div class="search-bar">
+                    <i class="fas fa-search search-icon" aria-hidden="true"></i>
+                    <input
+                        type="text"
+                        id="historial-search"
+                        class="search-input"
+                        placeholder="        Buscar en historial (usuario, N/S, fecha, reparación, diagnóstico)…"
+                        autocomplete="off"
+                        aria-label="Buscar en historial de reparaciones"
+                    />
+                    <span id="search-count" class="search-count" aria-live="polite"></span>
+                </div>
+            </div>
+
             <div class="table-container">
                 <table class="registros-table">
                     <thead>
                         <tr>
                             <th>ID (Usuario)</th>
                             <th>N/S</th>
+                            <th>SKU</th>
                             <th>Fecha</th>
-                            <th>Registro</th>
-                            <th>Diagnostico</th>
-                            <th>Descripción Diagnostico</th>
                             <th>Reparación</th>
-                            <th>Descripción Reparación</th>
+                            <th>Diagnóstico</th>
                             <th>Nivel</th>
-                            <th>Descripción Nivel</th>
+                            <th>Estado</th>
                         </tr>
                     </thead>
                     <tbody id="registros-body">
-                        <!-- El historial de registros se carga aquí desde el backend -->
                         <% if (typeof registros !== 'undefined' && registros.length > 0) { %>
-                          <% registros.forEach(registro => { %>
-                            <tr class="<%= registro.estado.includes('SCRAP') ? 'fila-scrap' : '' %>">
-                              <td><%= registro.user.nombre %></td>
-                              <td><%= registro.sn %></td>
-                              <td><%= new Date(registro.createdAt).toLocaleString('es-MX') %></td>
-                              <td><%= registro.estado %></td>
-                              <td><%= registro.motivoScrap ? registro.motivoScrap.replace(/_/g, ' ') : 'N/A' %></td>
-                            </tr>
-                          <% }); %>
-                        <% } %>  
+                            <% registros.forEach(registro => { %>
+                                <tr class="<%= registro.estado && registro.estado.includes('SCRAP') ? 'fila-scrap' : '' %>">
+                                    <td><%= registro.user ? registro.user.nombre : 'N/A' %></td>
+                                    <td><%= registro.sn %></td>
+                                    <td><%= registro.sku || 'N/A' %></td>
+                                    <td><%= new Date(registro.createdAt).toLocaleString('es-MX') %></td>
+                                    <td><%= registro.reparaciones || 'N/A' %></td>
+                                    <td><%= registro.diagnostico || 'N/A' %></td>
+                                    <td><%= registro.nivel || 'N/A' %></td>
+                                    <td><%= registro.estado || 'REPARADO' %></td>
+                                </tr>
+                            <% }); %>
+                        <% } %>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Scripts -->
     <script src="/js/cerrarsesion.js"></script>
-    <!-- Script centralizado para la captura -->
-    <script src="/js/formato-captura.js"></script>
-    <!-- Inicialización de usuario -->
+    <script src="/js/formato-captura.js?v=1758660008191"></script>
+    <script src="/js/scrap-toggle.js?v=1758660008191" defer></script>
+    <script src="/js/historial-search.js" defer></script>
+
+    <!-- Inicialización -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-          window.user = window.user || JSON.parse(`<%- JSON.stringify(user || {}) %>`);
-           
-           // Añadir listener para el botón de volver
-           document.getElementById('volver-btn').addEventListener('click', function() {
-               window.history.back();
-           });
+            // Cargar opciones dinámicas de SCRAP y reparaciones
+            cargarOpcionesScrap();
+            
+            window.user = window.user || JSON.parse(`<%- JSON.stringify(user || {}) %>`);
+            document.getElementById('volver-btn').addEventListener('click', function() {
+                window.history.back();
+            });
         });
-</script>
+    </script>
 </body>
 </html>

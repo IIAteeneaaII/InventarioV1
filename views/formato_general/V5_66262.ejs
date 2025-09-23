@@ -53,22 +53,32 @@
 
       <div class="form-group">
         <label>Reparaciones</label>
-        <input type="text" id="reparaciones-input" placeholder="Ingrese código de reparación" />
-      </div>
-
-      <!-- Motivo de Scrap (controlado por scrap-toggle.js) -->
-      <div class="form-group motivo-scrap-group">
-        <input type="text" id="scrap-input" name="scrap" hidden />
-        <label class="required" for="motivo-scrap">Motivo de Scrap</label>
-        <select id="motivo-scrap" name="motivoScrap">
-          <option value="">Seleccione un motivo</option>
-          <option value="cosmetica">Cosmética</option>
-          <option value="electronica">Electrónica</option>
-          <option value="infestado">Infestado</option>
+        <select id="reparaciones-input" name="reparaciones">
+          <option value="">Seleccione una reparación</option>
+          <!-- Las opciones se cargarán dinámicamente desde el backend -->
         </select>
       </div>
 
-      <!-- Botón SCRAP ON/OFF -->
+      <!-- Código de Diagnóstico (solo para SCRAP Electrónica) -->
+      <div class="form-group codigo-diagnostico-group" style="display: none;">
+        <label class="required" for="codigo-diagnostico">Código de Diagnóstico</label>
+        <select id="codigo-diagnostico" name="codigoDiagnostico">
+          <option value="">Seleccione código de diagnóstico</option>
+          <!-- Los códigos se cargarán dinámicamente desde el backend -->
+        </select>
+      </div>
+
+      <!-- Motivo de Scrap (el JS scrap-toggle controla su visibilidad) -->
+      <div class="form-group motivo-scrap-group">
+        <input type="text" id="scrap-input" name="scrap" hidden />
+        <label class="required" for="motivo-scrap">Motivo de Scrap</label>
+                <select id="motivo-scrap" name="motivoScrap">
+          <option value="">Seleccione un motivo</option>
+          <!-- Las opciones se cargarán dinámicamente desde el backend -->
+        </select>
+      </div>
+
+      <!-- Botón SCRAP ON/OFF (estado inicial OFF/rojo; lo maneja scrap-toggle.js) -->
       <button class="btn-toggle is-off" id="autoenter-toggle" title="SCRAP desactivado">
         <i class="fas fa-keyboard"></i> SCRAP: OFF
       </button>
@@ -91,7 +101,7 @@
     <div class="table-section">
       <h1>Historial de Registros</h1>
 
-      <!-- Barra de búsqueda -->
+      <!-- Barra de búsqueda (la lógica la hace tu historial-search.js) -->
       <div class="historial-search">
         <div class="search-bar">
           <i class="fas fa-search search-icon" aria-hidden="true"></i>
@@ -103,7 +113,7 @@
             autocomplete="off"
             aria-label="Buscar en historial de registros"
           />
-      
+       
           <span id="search-count" class="search-count" aria-live="polite"></span>
         </div>
       </div>
@@ -138,15 +148,17 @@
   </div>
 
   
-  <!-- Scripts -->
+  <!-- Scripts existentes -->
   <script src="/js/cerrarsesion.js"></script>
-  <script src="/js/formato-captura.js"></script>
-  <script src="/js/scrap-toggle.js" defer></script>
+  <script src="/js/formato-captura.js?v=1758660008162"></script>
+  <script src="/js/scrap-toggle.js?v=1758660008162" defer></script>
   <script src="/js/historial-search.js" defer></script>
 
   <!-- Inicialización de usuario -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
+      // Cargar opciones dinámicas de SCRAP y reparaciones
+      cargarOpcionesScrap();
       window.user = window.user || JSON.parse(`<%- JSON.stringify(user || {}) %>`);
       document.getElementById('volver-btn').addEventListener('click', function() {
         window.history.back();

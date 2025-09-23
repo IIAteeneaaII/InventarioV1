@@ -40,6 +40,7 @@ const getRolConfig = (rol) => {
     UEN: { fase: FaseProceso.ENSAMBLE, carpeta: 'formato_general' },
     UTI: { fase: FaseProceso.TEST_INICIAL, carpeta: 'formato_general' },
     UR: { fase: FaseProceso.RETEST, carpeta: 'formato_general' },
+    URep: { fase: FaseProceso.REPARACION, carpeta: 'formato_reparacion' },
     UA: { fase: FaseProceso.REGISTRO, carpeta: 'formato_registro' }
   };
   
@@ -57,7 +58,7 @@ exports.guardarRegistro = async (req, res) => {
 
   const userId = req.user.id;
   const userRol = req.user.rol;
-  let { sn, scrap, motivoScrap, detalleScrap, sku, finalizarLote, loteId } = req.body;
+  let { sn, scrap, motivoScrap, detalleScrap, sku, finalizarLote, loteId, codigoDanoId } = req.body;
 
   if (finalizarLote && loteId) return this.finalizarLote(req, res);
 
@@ -66,6 +67,24 @@ exports.guardarRegistro = async (req, res) => {
 
   if (userRol === 'UReg' && !sku) {
     return res.status(400).json({ error: 'El SKU es obligatorio para registrar un nuevo lote.' });
+  }
+
+  // 🚨 VALIDACIÓN: UReg no puede marcar SCRAP FUERA_DE_RANGO (electrónico)
+  if ((userRol === 'UReg' || userRol === 'UA') && scrap && motivoScrap) {
+    const m = motivoScrap.toString().toLowerCase();
+    if (m.includes('electro') || m.includes('fuera') || m.includes('rango')) {
+      return res.status(403).json({ 
+        error: 'El rol de Registro no puede marcar modems como SCRAP Electrónico. Solo puede marcar Cosmética e Infestado.' 
+      });
+    }
+  }
+
+  // Validar código de diagnóstico para SCRAP electrónico
+  if (scrap && motivoScrap && motivoScrap.toLowerCase().includes('electro') && codigoDanoId) {
+    const codigoDanoIdNum = parseInt(codigoDanoId);
+    if (!codigoDanoIdNum || codigoDanoIdNum <= 0) {
+      return res.status(400).json({ error: 'Código de diagnóstico no válido.' });
+    }
   }
 
   const rolConfig = getRolConfig(userRol);
@@ -150,6 +169,51 @@ exports.guardarRegistro = async (req, res) => {
         modem = await tx.modem.findUnique({ where: { sn } });
         if (!modem) throw new Error(`Módem ${sn} no encontrado.`);
 
+<<<<<<< Updated upstream
+=======
+        // 🚨 VALIDACIÓN CRÍTICA: Verificar si el modem está en SCRAP
+        if (modem.faseActual === 'SCRAP') {
+          // Solo URep puede procesar modems en SCRAP para reparación
+          if (userRol !== 'URep') {
+            throw new Error(`El módem ${sn} está en SCRAP y solo puede ser procesado por usuarios URep para reparación.`);
+          }
+          
+          // Para URep, validar que sea SCRAP ELECTRONICO/FUERA_DE_RANGO con diagnóstico
+          if (modem.motivoScrap !== 'FUERA_DE_RANGO') {
+            throw new Error(`El módem ${sn} en SCRAP motivo "${modem.motivoScrap}" no puede ser reparado. Solo se permite FUERA_DE_RANGO.`);
+          }
+          
+          // Verificar que tenga código de diagnóstico
+          const tieneDiagnostico = await tx.registro.findFirst({
+            where: {
+              modemId: modem.id,
+              fase: 'SCRAP',
+              codigoDanoId: { not: null }
+            }
+          });
+          
+          if (!tieneDiagnostico) {
+            throw new Error(`El módem ${sn} en SCRAP no tiene código de diagnóstico. No se puede procesar para reparación.`);
+          }
+          
+          // 🔧 LIBERACIÓN AUTOMÁTICA: URep puede liberar modems SCRAP para continuar proceso
+          // Actualizar modem de SCRAP a REPARACION y limpiar motivoScrap
+          await tx.modem.update({
+            where: { id: modem.id },
+            data: {
+              faseActual: 'REPARACION',
+              motivoScrap: null, // Limpiar motivo SCRAP
+              responsableId: userId,
+              updatedAt: new Date()
+            }
+          });
+          
+          // Actualizar variable local para el resto del procesamiento
+          modem.faseActual = 'REPARACION';
+          modem.motivoScrap = null;
+        }
+
+>>>>>>> Stashed changes
         // Lógica especial para empaque (UE)
         if (userRol === 'UE') {
           // Para UE, el modem ya debe estar en fase RETEST para pasar a EMPAQUE
@@ -216,7 +280,28 @@ exports.guardarRegistro = async (req, res) => {
           });
           
           return { registro: nuevoRegistro, loteId: modem.loteId };
-        } else {
+        }
+        // 🚨 VALIDACIÓN PARA SCRAP: Si se está marcando como SCRAP, manejar correctamente
+        else if (scrap && motivoScrapEnum) {
+          // Verificar que no esté ya en SCRAP para evitar sobrescribir
+          if (modem.faseActual === 'SCRAP') {
+            throw new Error(`El módem ${sn} ya está en SCRAP. No se puede volver a marcar.`);
+          }
+          
+          // Actualizar modem a SCRAP con el motivo
+          modem = await tx.modem.update({
+            where: { id: modem.id },
+            data: {
+              faseActual: 'SCRAP',
+              motivoScrap: motivoScrapEnum,
+              responsableId: userId,
+              updatedAt: new Date()
+            }
+          });
+          
+          loteActivo = await tx.lote.findUnique({ where: { id: modem.loteId } });
+        } 
+        else {
           // Lógica normal para otros roles (UTI / UEN / UR)
           const flujo = [FaseProceso.REGISTRO, FaseProceso.TEST_INICIAL, FaseProceso.ENSAMBLE, FaseProceso.RETEST, FaseProceso.EMPAQUE];
           const iA = flujo.indexOf(modem.faseActual);
@@ -269,17 +354,24 @@ exports.guardarRegistro = async (req, res) => {
         }
         
         // Si no existe, crear el registro
+        const registroData = {
+          sn,
+          fase: rolConfig.fase,
+          estado: estadoRegistro,
+          motivoScrap: motivoScrapEnum,
+          detalleScrap: detalleScrapEnum,
+          userId,
+          loteId: modem.loteId,
+          modemId: modem.id
+        };
+
+        // Agregar código de diagnóstico si es SCRAP electrónico
+        if (motivoScrapEnum === MotivoScrap.FUERA_DE_RANGO && codigoDanoId) {
+          registroData.codigoDanoId = parseInt(codigoDanoId);
+        }
+
         const registro = await tx.registro.create({
-          data: {
-            sn,
-            fase: rolConfig.fase,
-            estado: estadoRegistro,
-            motivoScrap: motivoScrapEnum,
-            detalleScrap: detalleScrapEnum,
-            userId,
-            loteId: modem.loteId,
-            modemId: modem.id
-          },
+          data: registroData,
           include: { user: { select: { id: true, nombre: true } } } // Incluir la relación de usuario
         });
 
@@ -371,8 +463,17 @@ exports.finalizarLote = async (req, res) => {
  * Verifica si un rol tiene acceso a una carpeta específica
  */
 exports.verificarAccesoCarpeta = (rol, carpeta) => {
-  const rolConfig = getRolConfig(rol);
-  return rolConfig.carpeta === carpeta;
+  const carpetasPermitidas = {
+    UReg: ['formato_registro'],
+    UE: ['formato_empaque'],
+    UEN: ['formato_general'],
+    UTI: ['formato_general'],
+    UR: ['formato_general'],
+    URep: ['formato_reparacion'],
+    UA: ['formato_registro', 'formato_empaque', 'formato_general', 'formato_reparacion']
+  };
+  
+  return carpetasPermitidas[rol]?.includes(carpeta) || false;
 };
 
 /**

@@ -13,10 +13,10 @@ const {
   createBatchRegistros,
   cambiarFaseDesdeCsv,
   procesarMultiplesCSV
-} = require('./function_fragments/nuevas_funciones.js');
+} = require('../../../function_fragments/nuevas_funciones.js');
 
 // Importar función de borrado de lotes
-const { borrarLoteCompleto } = require('./function_fragments/borrarLoteCompleto.js');
+const { borrarLoteCompleto } = require('../../../function_fragments/borrarLoteCompleto.js');
 
 // Mapeo de materiales a SKUs basado en seed.js
 const MATERIAL_TO_SKU = {

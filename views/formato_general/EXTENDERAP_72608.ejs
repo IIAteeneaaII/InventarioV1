@@ -15,12 +15,13 @@
   <!-- Cargar SweetAlert2 ANTES del controlador -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="/js/sweetalert-controller.js"></script>
-</head><body>
+</head>
+<body>
   <div class="app-container">
     <!-- Sección del usuario -->
     <div class="top-right">
       <img src="/img/usuario.webp" alt="Usuario" class="user-icon" />
-      <div class="username" id="username-display"><%= user.userName %></div>
+      <div class="username" id="username-display"><%= (user && user.userName) ? user.userName : '' %></div>
       <div class="user-info">
         <div class="logout-container">
           <i class="fas fa-right-from-bracket logout-icon" id="logout-icon" title="Cerrar sesión"></i>
@@ -31,7 +32,7 @@
     <!-- Sección del formulario -->
     <div class="form-section">
       <h1><%= skuNombre %> - <%= skuItem %></h1>
-       <!-- Instrucciones -->
+
       <div class="instrucciones">
         <p><strong>Instrucciones:</strong></p>
         <ul>
@@ -51,57 +52,59 @@
         <input type="text" id="sn-input" placeholder="Ingrese el número de serie" />
       </div>
 
-      <div class="form-group">
-        <label>Reparaciones</label>
-        <select id="reparaciones-input" name="reparaciones">
-          <option value="">Seleccione una reparación</option>
-          <!-- Las opciones se cargarán dinámicamente desde el backend -->
+      <!-- Motivo de Scrap (OCULTO hasta SCRAP:ON) -->
+      <div class="form-group motivo-scrap-group" style="display:none;">
+        <input type="text" id="scrap-input" name="scrap" hidden />
+        <label class="required" for="motivo-scrap">Motivo de Scrap</label>
+        <select id="motivo-scrap" name="motivoScrap">
+          <option value="">Seleccione un motivo</option>
+          <option value="INFESTADO">Infestado</option>
+          <option value="COSMETICA">Cosmética</option>
+          <option value="ELECTRONICA" data-requiere-diagnostico="true">Electrónica</option>
         </select>
       </div>
 
-      <!-- Código de Diagnóstico (solo para SCRAP Electrónica) -->
-      <div class="form-group codigo-diagnostico-group" style="display: none;">
+      <!-- Código de Diagnóstico (debajo de Motivo; solo si SCRAP:ON y motivo = ELECTRÓNICA) -->
+      <div class="form-group codigo-diagnostico-group" style="display:none;">
         <label class="required" for="codigo-diagnostico">Código de Diagnóstico</label>
         <select id="codigo-diagnostico" name="codigoDiagnostico">
           <option value="">Seleccione código de diagnóstico</option>
-          <!-- Los códigos se cargarán dinámicamente desde el backend -->
+          <!-- JS agrega de prueba:
+               T001 — TARJETA SCRAP
+               D002 — NO ENCIENDE -->
         </select>
       </div>
 
-      <!-- Motivo de Scrap (controlado por scrap-toggle.js) -->
-      <div class="form-group motivo-scrap-group">
-        <input type="text" id="scrap-input" name="scrap" hidden />
-        <label class="required" for="motivo-scrap">Motivo de Scrap</label>
-                <select id="motivo-scrap" name="motivoScrap">
-          <option value="">Seleccione un motivo</option>
-          <!-- Las opciones se cargarán dinámicamente desde el backend -->
-        </select>
+      <!-- Descripción (debajo de Código) -->
+      <div class="form-group descripcion-codigo-group" style="display:none;">
+        <label for="descripcion-codigo">Descripción</label>
+        <input type="text" id="descripcion-codigo" name="descripcionCodigo" placeholder="Descripción del código" readonly />
       </div>
 
-      <!-- Botón SCRAP ON/OFF -->
+      <!-- Botón SCRAP ON/OFF (queda debajo y lo empujan los campos cuando aparecen) -->
       <button class="btn-toggle is-off" id="autoenter-toggle" title="SCRAP desactivado">
         <i class="fas fa-keyboard"></i> SCRAP: OFF
       </button>
       <div class="status-indicator"><span class="ready">Listo para escanear</span></div>
+
+      <!-- Hidden para envío -->
+      <input type="hidden" id="codigo-diagnostico-hidden" name="codigoSeleccionado" />
+      <input type="hidden" id="descripcion-diagnostico-hidden" name="descripcionSeleccionada" />
 
       <!-- Botón Guardar -->
       <button class="btn-confirmar" id="guardar-btn">
         <i class="fas fa-save"></i> GUARDAR REGISTRO
       </button>
 
-
       <button id="volver-btn" class="btn-secondary">
         <i class="fas fa-arrow-left"></i> Volver
       </button>
-
-<!-- Finalizar lote-->
     </div>
 
     <!-- Sección de la tabla -->
     <div class="table-section">
       <h1>Historial de Registros</h1>
 
-      <!-- Barra de búsqueda -->
       <div class="historial-search">
         <div class="search-bar">
           <i class="fas fa-search search-icon" aria-hidden="true"></i>
@@ -113,7 +116,6 @@
             autocomplete="off"
             aria-label="Buscar en historial de registros"
           />
-        
           <span id="search-count" class="search-count" aria-live="polite"></span>
         </div>
       </div>
@@ -127,17 +129,28 @@
               <th>Fecha</th>
               <th>Registro</th>
               <th>Tipo</th>
+              <th>Código</th>
+              <th>Descripción</th>
             </tr>
           </thead>
           <tbody id="registros-body">
-            <% if (typeof registros !== 'undefined' && registros.length > 0) { %>
-              <% registros.forEach(registro => { %>
-                <tr class="<%= registro.estado.includes('SCRAP') ? 'fila-scrap' : '' %>">
-                  <td><%= registro.user.nombre %></td>
-                  <td><%= registro.sn %></td>
-                  <td><%= new Date(registro.createdAt).toLocaleString('es-MX') %></td>
-                  <td><%= registro.estado %></td>
-                  <td><%= registro.motivoScrap ? registro.motivoScrap.replace(/_/g, ' ') : 'N/A' %></td>
+            <% if (Array.isArray(registros) && registros.length > 0) { %>
+              <% registros.forEach(function(registro){ %>
+                <%
+                  var _userCell = (registro && registro.user) ? (registro.user.nombre || registro.user.userName) : null;
+                  var _isScrap  = (registro && registro.estado && typeof registro.estado === 'string' && registro.estado.indexOf('SCRAP') !== -1);
+                  var _motivo   = registro && registro.motivoScrap ? String(registro.motivoScrap).replace(/_/g, ' ') : 'N/A';
+                  var _codigo   = registro && (registro.codigoDiagnostico || registro.codigo || registro.codDiagnostico) ? (registro.codigoDiagnostico || registro.codigo || registro.codDiagnostico) : 'N/A';
+                  var _desc     = registro && (registro.descripcionDiagnostico || registro.descripcion || registro.descDiagnostico) ? (registro.descripcionDiagnostico || registro.descripcion || registro.descDiagnostico) : 'N/A';
+                %>
+                <tr class="<%= _isScrap ? 'fila-scrap' : '' %>">
+                  <td><%= _userCell || 'N/D' %></td>
+                  <td><%= registro && registro.sn ? registro.sn : '' %></td>
+                  <td><%= registro && registro.createdAt ? new Date(registro.createdAt).toLocaleString('es-MX') : '' %></td>
+                  <td><%= registro && registro.estado ? registro.estado : '' %></td>
+                  <td><%= _motivo %></td>
+                  <td><%= _codigo %></td>
+                  <td><%= _desc %></td>
                 </tr>
               <% }); %>
             <% } %>
@@ -147,21 +160,19 @@
     </div>
   </div>
 
-  
-  <!-- Scripts -->
+  <!-- Scripts existentes -->
   <script src="/js/cerrarsesion.js"></script>
-  <script src="/js/formato-captura.js?v=1758660008159"></script>
-  <script src="/js/scrap-toggle.js?v=1758660008159" defer></script>
+  <script src="/js/formato-captura.js?v=1758660008162"></script>
+  <script src="/js/scrap-toggle.js?v=1758660008162" defer></script>
   <script src="/js/historial-search.js" defer></script>
 
-  <!-- Inicialización de usuario -->
+  <!-- Inicialización -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Cargar opciones dinámicas de SCRAP y reparaciones
-      cargarOpcionesScrap();
+      // Si tienes funciones para cargar opciones desde backend, puedes llamarlas aquí.
       window.user = window.user || JSON.parse(`<%- JSON.stringify(user || {}) %>`);
-      const volverBtn = document.getElementById('volver-btn');
-      if (volverBtn) volverBtn.addEventListener('click', () => window.history.back());
+      var volverBtn = document.getElementById('volver-btn');
+      if (volverBtn) volverBtn.addEventListener('click', function(){ window.history.back(); });
     });
   </script>
 </body>

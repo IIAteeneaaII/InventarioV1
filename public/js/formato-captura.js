@@ -1,3 +1,193 @@
+// ---- Función para cargar opciones dinámicas desde el backend ----------------
+async function cargarOpcionesScrap() {
+  console.log('=== INICIANDO CARGA DE OPCIONES ===');
+  
+  try {
+    console.log('Cargando opciones dinámicas de SCRAP...');
+    
+    // Intentar el fetch con manejo de errores completo
+    let response;
+    try {
+      response = await fetch(`/api/scrap/opciones?t=${Date.now()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        credentials: 'same-origin'
+      });
+      console.log('Fetch completado exitosamente');
+    } catch (fetchError) {
+      console.error('Error en fetch:', fetchError);
+      cargarOpcionesFallback();
+      return;
+    }
+
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+
+    if (!response.ok) {
+      console.error('Response no ok:', response.status, response.statusText);
+      if (response.status === 401 || response.status === 403) {
+        console.error('Error de autenticación - usando opciones por defecto');
+      }
+      cargarOpcionesFallback();
+      return;
+    }
+
+    let data;
+    try {
+      const responseText = await response.text();
+      console.log('Response text:', responseText.substring(0, 200) + '...');
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Error parseando JSON:', parseError);
+      cargarOpcionesFallback();
+      return;
+    }
+
+    console.log('=== DEBUGGING OPCIONES ===');
+    console.log('Opciones cargadas (raw):', data);
+    
+    if (!data) {
+      console.error('Data is null or undefined');
+      cargarOpcionesFallback();
+      return;
+    }
+    
+    console.log('data.opcionesScrap:', data.opcionesScrap);
+    console.log('data.opcionesReparacion:', data.opcionesReparacion);
+    console.log('Type of data:', typeof data);
+    console.log('Keys of data:', Object.keys(data));
+    console.log('=== END DEBUGGING ===');
+
+    // Procesar las opciones
+    procesarOpciones(data);
+
+  } catch (error) {
+    console.error('Error general al cargar opciones dinámicas:', error);
+    console.error('Stack trace:', error.stack);
+    cargarOpcionesFallback();
+  }
+}
+
+// Función para cargar opciones hardcodeadas como fallback
+function cargarOpcionesFallback() {
+  console.log('Cargando opciones de fallback...');
+  
+  const opcionesFallback = {
+    opcionesScrap: [
+      { value: 'COSMETICA', text: 'Cosmética', requiereDiagnostico: false },
+      { value: 'ELECTRONICO', text: 'Electrónica', requiereDiagnostico: true },
+      { value: 'INFESTADO', text: 'Infestado', requiereDiagnostico: false }
+    ],
+    opcionesReparacion: [
+      { value: 'R01', text: 'R01 - Cambio de conectores' },
+      { value: 'R02', text: 'R02 - Reparación de antena' },
+      { value: 'R03', text: 'R03 - Limpieza general' },
+      { value: 'R04', text: 'R04 - Cambio de componentes TH' },
+      { value: 'R05', text: 'R05 - Cambio de componentes SMT' }
+    ]
+  };
+  
+  procesarOpciones(opcionesFallback);
+}
+
+// Función para procesar y cargar las opciones en los selects
+function procesarOpciones(data) {
+  console.log('Procesando opciones:', data);
+
+  // Cargar opciones de SCRAP
+  console.log('Intentando cargar opciones de SCRAP...');
+  const motivoScrapSelect = document.getElementById('motivo-scrap');
+  if (motivoScrapSelect && data && data.opcionesScrap) {
+    console.log('Elemento motivo-scrap encontrado, procesando opciones...');
+    motivoScrapSelect.innerHTML = '<option value="">Seleccione un motivo</option>';
+    data.opcionesScrap.forEach(opcion => {
+      const option = document.createElement('option');
+      option.value = opcion.value;
+      option.textContent = `${opcion.text}`;
+      option.setAttribute('data-requiere-diagnostico', opcion.requiereDiagnostico);
+      motivoScrapSelect.appendChild(option);
+    });
+    console.log(`✅ Cargadas ${data.opcionesScrap.length} opciones de SCRAP`);
+  } else {
+    console.error('❌ No se pudo cargar opciones de SCRAP:', {
+      motivoScrapSelect: !!motivoScrapSelect,
+      data: !!data,
+      opcionesScrap: data ? !!data.opcionesScrap : 'data is null'
+    });
+  }
+
+  // Cargar opciones de reparaciones
+  console.log('Intentando cargar opciones de reparaciones...');
+  const reparacionesSelect = document.getElementById('reparaciones-input');
+  if (reparacionesSelect && data && data.opcionesReparacion) {
+    console.log('Elemento reparaciones-input encontrado, procesando opciones...');
+    reparacionesSelect.innerHTML = '<option value="">Seleccione una reparación</option>';
+    data.opcionesReparacion.forEach(opcion => {
+      const option = document.createElement('option');
+      option.value = opcion.value;
+      option.textContent = `${opcion.text}`;
+      reparacionesSelect.appendChild(option);
+    });
+    console.log(`✅ Cargadas ${data.opcionesReparacion.length} opciones de reparación`);
+  } else {
+    console.error('❌ No se pudo cargar opciones de reparación:', {
+      reparacionesSelect: !!reparacionesSelect,
+      data: !!data,
+      opcionesReparacion: data ? !!data.opcionesReparacion : 'data is null'
+    });
+  }
+
+  // Cargar opciones de diagnóstico (para formato reparación y formato general)
+  const diagnosticoSelect = document.getElementById('diagnostico-input');
+  const codigoDiagnosticoSelect = document.getElementById('codigo-diagnostico');
+  
+  if (data && data.codigosDiagnostico) {
+    // Para formato reparación (diagnostico-input)
+    if (diagnosticoSelect) {
+      diagnosticoSelect.innerHTML = '<option value="">Seleccione un diagnóstico</option>';
+      data.codigosDiagnostico.forEach(codigo => {
+        const option = document.createElement('option');
+        option.value = codigo.id;
+        option.textContent = `${codigo.codigo} - ${codigo.descripcion}`;
+        diagnosticoSelect.appendChild(option);
+      });
+      console.log(`✅ Cargados ${data.codigosDiagnostico.length} códigos de diagnóstico (formato reparación)`);
+    }
+    
+    // Para formato general (codigo-diagnostico)
+    if (codigoDiagnosticoSelect) {
+      codigoDiagnosticoSelect.innerHTML = '<option value="">Seleccione código de diagnóstico</option>';
+      data.codigosDiagnostico.forEach(codigo => {
+        const option = document.createElement('option');
+        option.value = codigo.id;
+        option.textContent = `${codigo.codigo} - ${codigo.descripcion}`;
+        codigoDiagnosticoSelect.appendChild(option);
+      });
+      console.log(`✅ Cargados ${data.codigosDiagnostico.length} códigos de diagnóstico (formato general)`);
+    }
+  }
+
+  // Cargar opciones de nivel (solo para vistas de reparación)
+  const nivelSelect = document.getElementById('nivel-input');
+  if (nivelSelect && data && data.nivelesReparacion) {
+    nivelSelect.innerHTML = '<option value="">Seleccione nivel de reparación</option>';
+    data.nivelesReparacion.forEach(nivel => {
+      const option = document.createElement('option');
+      option.value = nivel.value;
+      option.textContent = `${nivel.text}`;
+      nivelSelect.appendChild(option);
+    });
+    console.log(`✅ Cargados ${data.nivelesReparacion.length} niveles de reparación`);
+  }
+
+  console.log('=== CARGA DE OPCIONES COMPLETADA ===');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const guardarBtn = document.getElementById('guardar-btn');
   const finalizarLoteBtn = document.getElementById('finalizar-lote-btn');
@@ -149,13 +339,31 @@ document.addEventListener('DOMContentLoaded', () => {
       ? data.motivoScrap.replace('SCRAP-', '').replace(/_/g, ' ')
       : 'N/A';
 
-    nuevaFila.innerHTML = `
-      <td>${data.userName || userName}</td>
-      <td>${data.sn}</td>
-      <td>${new Date().toLocaleString('es-MX')}</td>
-      <td>${esScrap ? 'SCRAP' : 'SN_OK'}</td>
-      <td>${motivoMostrado}</td>
-    `;
+    // Detectar si estamos en una vista de reparación (tiene campos específicos)
+    const esVistaReparacion = document.getElementById('diagnostico-input') !== null;
+    
+    if (esVistaReparacion) {
+      // Tabla para formato_reparacion (más columnas)
+      nuevaFila.innerHTML = `
+        <td>${data.userName || userName}</td>
+        <td>${data.sn}</td>
+        <td>${data.skuProducto || 'N/A'}</td>
+        <td>${new Date().toLocaleString('es-MX')}</td>
+        <td>${data.reparaciones || 'N/A'}</td>
+        <td>${data.diagnostico || 'N/A'}</td>
+        <td>${data.nivel || 'N/A'}</td>
+        <td>${esScrap ? 'SCRAP' : 'REPARADO'}</td>
+      `;
+    } else {
+      // Tabla para formato_general (columnas estándar)
+      nuevaFila.innerHTML = `
+        <td>${data.userName || userName}</td>
+        <td>${data.sn}</td>
+        <td>${new Date().toLocaleString('es-MX')}</td>
+        <td>${esScrap ? 'SCRAP' : 'SN_OK'}</td>
+        <td>${motivoMostrado}</td>
+      `;
+    }
 
     if (tablaBody.firstChild) {
       tablaBody.insertBefore(nuevaFila, tablaBody.firstChild);
@@ -218,8 +426,38 @@ document.addEventListener('DOMContentLoaded', () => {
         if (motivoScrapSelect) motivoScrapSelect.focus();
         return false;
       }
-      // Sincroniza el input con el motivo
-      if (scrapInput) scrapInput.value = `SCRAP-${motivo}`;
+      
+      // Para SCRAP electrónico, el código de diagnóstico es obligatorio
+      if (motivo) {
+        const selectedOption = motivoScrapSelect.options[motivoScrapSelect.selectedIndex];
+        const requiereDiagnostico = selectedOption && selectedOption.getAttribute('data-requiere-diagnostico') === 'true';
+        
+        if (requiereDiagnostico) {
+          const codigoSelect = document.getElementById('codigo-diagnostico');
+          const codigoId = codigoSelect ? codigoSelect.value.trim() : '';
+          if (!codigoId) {
+            statusIndicator.innerHTML = '<span class="warning">Código de diagnóstico obligatorio para este tipo de SCRAP</span>';
+            if (codigoSelect) codigoSelect.focus();
+            return false;
+          }
+        }
+      }
+      
+      // Sincroniza el input con el motivo y código si aplica
+      if (scrapInput) {
+        let scrapValue = `SCRAP-${motivo}`;
+        const selectedOption = motivoScrapSelect.options[motivoScrapSelect.selectedIndex];
+        const requiereDiagnostico = selectedOption && selectedOption.getAttribute('data-requiere-diagnostico') === 'true';
+        
+        if (requiereDiagnostico) {
+          const codigoSelect = document.getElementById('codigo-diagnostico');
+          const codigoId = codigoSelect ? codigoSelect.value.trim() : '';
+          if (codigoId) {
+            scrapValue += `-CODIGO-${codigoId}`;
+          }
+        }
+        scrapInput.value = scrapValue;
+      }
     } else {
       // Si SCRAP está OFF, aseguramos que el campo quede vacío
       if (scrapInput) scrapInput.value = '';
@@ -260,10 +498,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const scrap = scrapInput ? scrapInput.value.toUpperCase() : '';
     const motivoScrap = motivoScrapSelect ? motivoScrapSelect.value : '';
+    const codigoSelect = document.getElementById('codigo-diagnostico');
+    
+    // Obtener valores de campos de reparación
+    const reparacionesSelect = document.getElementById('reparaciones-input');
+    const diagnosticoSelect = document.getElementById('diagnostico-input');
+    const nivelSelect = document.getElementById('nivel-input');
+    const skuInputField = document.getElementById('sku-input');
+    
+    const reparaciones = reparacionesSelect ? reparacionesSelect.value : '';
+    const diagnostico = diagnosticoSelect ? diagnosticoSelect.value : '';
+    const nivel = nivelSelect ? nivelSelect.value : '';
+    const skuValue = skuInputField ? skuInputField.value.toUpperCase().trim() : '';
+    
+    // Verificar si requiere diagnóstico
+    let codigoDiagnosticoId = '';
+    if (motivoScrap && motivoScrapSelect) {
+      const selectedOption = motivoScrapSelect.options[motivoScrapSelect.selectedIndex];
+      const requiereDiagnostico = selectedOption && selectedOption.getAttribute('data-requiere-diagnostico') === 'true';
+      if (requiereDiagnostico && codigoSelect) {
+        codigoDiagnosticoId = codigoSelect.value;
+      }
+    }
 
     statusIndicator.innerHTML = '<span class="processing">Procesando...</span>';
 
     try {
+      const requestBody = { sn, scrap, motivoScrap, sku };
+      
+      // Agregar campos específicos de reparación si existen
+      if (reparaciones) requestBody.reparaciones = reparaciones;
+      if (diagnostico) requestBody.diagnostico = diagnostico;
+      if (nivel) requestBody.nivel = nivel;
+      if (skuValue) requestBody.skuProducto = skuValue;
+      
+      // Agregar código de diagnóstico si se requiere
+      if (codigoDiagnosticoId) {
+        requestBody.codigoDanoId = codigoDiagnosticoId;
+      }
+      
       const response = await fetch('/api/registros', {
         method: 'POST',
         headers: {
@@ -271,7 +544,7 @@ document.addEventListener('DOMContentLoaded', () => {
           'X-Requested-With': 'XMLHttpRequest'
         },
         credentials: 'same-origin',
-        body: JSON.stringify({ sn, scrap, motivoScrap, sku }),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {
@@ -294,6 +567,10 @@ document.addEventListener('DOMContentLoaded', () => {
           sn,
           scrap,
           motivoScrap,
+          reparaciones,
+          diagnostico,
+          nivel,
+          skuProducto: skuValue,
           userName: data.userName || userName
         });
 
@@ -304,6 +581,17 @@ document.addEventListener('DOMContentLoaded', () => {
         snInput.value = '';
         if (scrapInput) scrapInput.value = '';
         if (motivoScrapSelect) motivoScrapSelect.value = '';
+        
+        // Limpiar campos específicos de reparación
+        const reparacionesSelect = document.getElementById('reparaciones-input');
+        const diagnosticoSelect = document.getElementById('diagnostico-input');
+        const nivelSelect = document.getElementById('nivel-input');
+        const skuInputField = document.getElementById('sku-input');
+        
+        if (reparacionesSelect) reparacionesSelect.value = '';
+        if (diagnosticoSelect) diagnosticoSelect.value = '';
+        if (nivelSelect) nivelSelect.value = '';
+        if (skuInputField) skuInputField.value = '';
       } else {
         const errorData = await response.json();
         statusIndicator.innerHTML = `<span class="error">${errorData.error || 'Error'}</span>`;

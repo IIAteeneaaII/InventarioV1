@@ -7,10 +7,387 @@
     <link rel="stylesheet" href="/css/menu_modelos.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- ESTILOS ADICIONALES PARA SISTEMA DE TICKETS -->
+    <style>
+        /* === ESTILOS PARA SISTEMA DE TICKETS === */
+        .tickets-trigger {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 25px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tickets-trigger:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.6);
+            background: linear-gradient(45deg, #c0392b, #a93226);
+        }
+
+        .tickets-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: linear-gradient(to bottom, #f8f9fa, #ecf0f1);
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.2);
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10000;
+            overflow-y: auto;
+        }
+
+        .tickets-panel.active {
+            right: 0;
+        }
+
+        .tickets-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(2px);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 9999;
+        }
+
+        .tickets-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .tickets-header {
+            background: linear-gradient(to right, #2c3e50, #34495e);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .tickets-header h3 {
+            margin: 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .close-tickets-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .close-tickets-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(90deg);
+        }
+
+        .tickets-content {
+            padding: 20px;
+            height: calc(100vh - 80px);
+            overflow-y: auto;
+        }
+
+        .tickets-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .tickets-tab {
+            flex: 1;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            color: #7f8c8d;
+        }
+
+        .tickets-tab.active {
+            background: linear-gradient(to right, #3498db, #2980b9);
+            color: white;
+            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+        }
+
+        .tickets-tab:not(.active):hover {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .ticket-form {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .form-group select,
+        .form-group textarea,
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e6ed;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .form-group select:focus,
+        .form-group textarea:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+            max-height: 200px;
+        }
+
+        .priority-selector {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .priority-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 5px;
+            border: 2px solid #e0e6ed;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .priority-option.priority-1 { border-color: #27ae60; color: #27ae60; }
+        .priority-option.priority-2 { border-color: #3498db; color: #3498db; }
+        .priority-option.priority-3 { border-color: #f39c12; color: #f39c12; }
+        .priority-option.priority-4 { border-color: #e67e22; color: #e67e22; }
+        .priority-option.priority-5 { border-color: #e74c3c; color: #e74c3c; }
+
+        .priority-option.selected {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .priority-option.priority-1.selected { background: rgba(39, 174, 96, 0.1); }
+        .priority-option.priority-2.selected { background: rgba(52, 152, 219, 0.1); }
+        .priority-option.priority-3.selected { background: rgba(243, 156, 18, 0.1); }
+        .priority-option.priority-4.selected { background: rgba(230, 126, 34, 0.1); }
+        .priority-option.priority-5.selected { background: rgba(231, 76, 60, 0.1); }
+
+        .priority-number {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .priority-label {
+            font-size: 0.75rem;
+            text-align: center;
+            line-height: 1.1;
+        }
+
+        .submit-ticket-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(to right, #2ecc71, #27ae60);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+        }
+
+        .submit-ticket-btn:hover {
+            background: linear-gradient(to right, #27ae60, #219653);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(39, 174, 96, 0.4);
+        }
+
+        .submit-ticket-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .tickets-list {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .ticket-item {
+            padding: 16px;
+            border-bottom: 1px solid #e9ecef;
+            transition: background-color 0.3s ease;
+        }
+
+        .ticket-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .ticket-item:last-child {
+            border-bottom: none;
+        }
+
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .ticket-type {
+            font-size: 0.85rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .ticket-type.solicitud { background: #e3f2fd; color: #1976d2; }
+        .ticket-type.problema { background: #ffebee; color: #c62828; }
+
+        .ticket-priority {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: white;
+            margin-left: 8px;
+        }
+
+        .ticket-priority.priority-1 { background: #27ae60; }
+        .ticket-priority.priority-2 { background: #3498db; }
+        .ticket-priority.priority-3 { background: #f39c12; }
+        .ticket-priority.priority-4 { background: #e67e22; }
+        .ticket-priority.priority-5 { background: #e74c3c; }
+
+        .ticket-description {
+            color: #555;
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .ticket-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: #7f8c8d;
+        }
+
+        .ticket-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 0.8rem;
+        }
+
+        .ticket-status.pendiente { background: #fff3cd; color: #856404; }
+        .ticket-status.en-proceso { background: #cce5ff; color: #0056b3; }
+        .ticket-status.resuelto { background: #d4edda; color: #155724; }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #7f8c8d;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+
+        .readonly-input {
+            background: #f8f9fa !important;
+            color: #6c757d !important;
+            cursor: not-allowed !important;
+        }
+
+        .tickets-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .tickets-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .tickets-content::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        .tickets-content::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
-        <header class="app-header" ; display: flex; align-items: center; justify-content: space-between; padding: 1rem;">
+        <header class="app-header" style="display: flex; align-items: center; justify-content: space-between; padding: 1rem;">
             <h2 style="color: white; margin: 0;">Selección de Modelo</h2>
             <div class="user-profile" style="display: flex; align-items: center; gap: 10px;">
                 <img src="/img/usuario.webp" alt="Usuario" class="user-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: #fff; border: 2px solid #fff;">
@@ -57,10 +434,106 @@
         </div>
     </div>
 
+    <!-- SISTEMA DE TICKETS -->
+    <!-- Botón flotante para abrir sistema de tickets -->
+    <button class="tickets-trigger" id="open-tickets-btn">
+        <i class="fas fa-ticket-alt"></i>
+        <span>Tickets</span>
+    </button>
+
+    <!-- Overlay para el panel de tickets -->
+    <div class="tickets-overlay" id="tickets-overlay"></div>
+
+    <!-- Panel deslizante de tickets -->
+    <div class="tickets-panel" id="tickets-panel">
+        <div class="tickets-header">
+            <h3>Sistema de Tickets</h3>
+            <button class="close-tickets-btn" id="close-tickets-btn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="tickets-content">
+            <!-- Tabs -->
+            <div class="tickets-tabs">
+                <button class="tickets-tab active" data-tab="create">
+                    <i class="fas fa-plus-circle"></i> Crear Ticket
+                </button>
+                <button class="tickets-tab" data-tab="view">
+                    <i class="fas fa-list"></i> Mis Tickets
+                </button>
+            </div>
+
+            <!-- Tab Content: Crear Ticket -->
+            <div id="create-ticket-tab" class="tab-content">
+                <form class="ticket-form" id="ticket-form">
+                    <div class="form-group">
+                        <label for="ticket-type">Tipo de Solicitud</label>
+                        <select id="ticket-type" name="tipo" required>
+                            <option value="">Seleccionar tipo...</option>
+                            <option value="SOLICITUD_FUNCION">Solicitud de Función</option>
+                            <option value="REPORTAR_PROBLEMA">Reportar Problema</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ticket-user">Usuario Solicitante</label>
+                        <input type="text" id="ticket-user" name="usuario" readonly class="readonly-input">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ticket-description">Descripción</label>
+                        <textarea id="ticket-description" name="descripcion" placeholder="Describe detalladamente el problema o solicitud..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Nivel de Prioridad</label>
+                        <div class="priority-selector">
+                            <div class="priority-option priority-1" data-priority="1">
+                                <div class="priority-number">1</div>
+                                <div class="priority-label">Baja</div>
+                            </div>
+                            <div class="priority-option priority-2" data-priority="2">
+                                <div class="priority-number">2</div>
+                                <div class="priority-label">Media Baja</div>
+                            </div>
+                            <div class="priority-option priority-3" data-priority="3">
+                                <div class="priority-number">3</div>
+                                <div class="priority-label">Media</div>
+                            </div>
+                            <div class="priority-option priority-4" data-priority="4">
+                                <div class="priority-number">4</div>
+                                <div class="priority-label">Alta</div>
+                            </div>
+                            <div class="priority-option priority-5" data-priority="5">
+                                <div class="priority-number">5</div>
+                                <div class="priority-label">Crítica</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-ticket-btn">
+                        <i class="fas fa-paper-plane"></i>
+                        Enviar Ticket
+                    </button>
+                </form>
+            </div>
+
+            <!-- Tab Content: Ver Tickets -->
+            <div id="view-tickets-tab" class="tab-content" style="display: none;">
+                <div class="tickets-list" id="tickets-list">
+                    <!-- Los tickets se cargarán dinámicamente aquí -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="/js/cerrarsesion.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // === CÓDIGO ORIGINAL DEL SISTEMA ===
+            
             // Obtener datos del usuario del localStorage
             let usuarioObj;
             try {
@@ -111,11 +584,8 @@
                     const fila = document.createElement('tr');
                     fila.dataset.sku = sku;
                     fila.dataset.nombre = nombre;
-                    fila.innerHTML = `
-                        <td><span class="sku-tag">${sku}</span></td>
-                        <td>${nombre}</td>
-                    `;
-
+                    fila.innerHTML = `<td><span class="sku-tag">${sku}</span></td><td>${nombre}</td>`;
+                    
                     fila.addEventListener('click', function() {
                         // Quitar selección de otras filas
                         document.querySelectorAll('#tabla-lotes tr').forEach(row => {
@@ -196,8 +666,8 @@
                         Swal.fire({
                             title: '¡Selección Confirmada!',
                             html: `<div style="text-align: center;">
-                                      <i class="fas fa-check-circle" style="font-size: 4rem; color: #27ae60;"></i>
-                                      <p style="font-size: 1.4rem; margin-top: 1rem;">SKU <b>${loteSeleccionado.sku}</b> (${loteSeleccionado.nombre})<br>confirmado correctamente</p>
+                                   <i class="fas fa-check-circle" style="font-size: 4rem; color: #27ae60;"></i>
+                                   <p style="font-size: 1.4rem; margin-top: 1rem;">SKU <b>${loteSeleccionado.sku}</b> (${loteSeleccionado.nombre})<br>confirmado correctamente</p>
                                    </div>`,
                             icon: 'success',
                             confirmButtonText: 'Continuar',
@@ -241,7 +711,7 @@
                 });
             });
 
-            // Evento para el botón de cerrar sesión (usando la función del archivo cerrarsesion.js)
+            // Evento para el botón de cerrar sesión
             document.getElementById('logout-icon').addEventListener('click', function() {
                 if (typeof cerrarSesion === 'function') {
                     cerrarSesion();
@@ -262,6 +732,273 @@
                     });
                 }
             });
+
+            // === SISTEMA DE TICKETS ===
+            
+            // Variables del sistema de tickets
+            let selectedPriority = null;
+            let userTickets = [];
+
+            // Referencias DOM del sistema de tickets
+            const openTicketsBtn = document.getElementById('open-tickets-btn');
+            const closeTicketsBtn = document.getElementById('close-tickets-btn');
+            const ticketsPanel = document.getElementById('tickets-panel');
+            const ticketsOverlay = document.getElementById('tickets-overlay');
+            const ticketUserInput = document.getElementById('ticket-user');
+            const ticketForm = document.getElementById('ticket-form');
+            const ticketsList = document.getElementById('tickets-list');
+
+            // Rellenar automáticamente el usuario solicitante
+            if (usuarioObj) {
+                const userRole = usuarioObj.rol || 'Usuario';
+                const userName = usuarioObj.nombre || usuarioObj.userName || 'Usuario';
+                ticketUserInput.value = `${userName} (${userRole})`;
+            }
+
+            // Funciones para abrir/cerrar panel
+            function openTicketsPanel() {
+                ticketsPanel.classList.add('active');
+                ticketsOverlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+                loadUserTickets();
+            }
+
+            function closeTicketsPanel() {
+                ticketsPanel.classList.remove('active');
+                ticketsOverlay.classList.remove('active');
+                document.body.style.overflow = '';
+                resetTicketForm();
+            }
+
+            // Event listeners para abrir/cerrar
+            openTicketsBtn.addEventListener('click', openTicketsPanel);
+            closeTicketsBtn.addEventListener('click', closeTicketsPanel);
+            ticketsOverlay.addEventListener('click', closeTicketsPanel);
+
+            // Manejo de tabs
+            document.querySelectorAll('.tickets-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const targetTab = this.dataset.tab;
+                    
+                    // Cambiar tab activo
+                    document.querySelectorAll('.tickets-tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Mostrar contenido correspondiente
+                    if (targetTab === 'create') {
+                        document.getElementById('create-ticket-tab').style.display = 'block';
+                        document.getElementById('view-tickets-tab').style.display = 'none';
+                    } else {
+                        document.getElementById('create-ticket-tab').style.display = 'none';
+                        document.getElementById('view-tickets-tab').style.display = 'block';
+                        loadUserTickets();
+                    }
+                });
+            });
+
+            // Manejo del selector de prioridad
+            document.querySelectorAll('.priority-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    // Quitar selección anterior
+                    document.querySelectorAll('.priority-option').forEach(o => o.classList.remove('selected'));
+                    
+                    // Seleccionar nueva prioridad
+                    this.classList.add('selected');
+                    selectedPriority = parseInt(this.dataset.priority);
+                });
+            });
+
+            // Función para resetear el formulario
+            function resetTicketForm() {
+                ticketForm.reset();
+                selectedPriority = null;
+                document.querySelectorAll('.priority-option').forEach(o => o.classList.remove('selected'));
+                if (usuarioObj) {
+                    const userRole = usuarioObj.rol || 'Usuario';
+                    const userName = usuarioObj.nombre || usuarioObj.userName || 'Usuario';
+                    ticketUserInput.value = `${userName} (${userRole})`;
+                }
+            }
+
+            // Función para crear ticket
+            async function createTicket(ticketData) {
+                try {
+                    const response = await fetch('/api/tickets', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            ...ticketData,
+                            usuarioSolicitanteId: usuarioObj?.id,
+                            usuarioSolicitante: usuarioObj?.nombre || usuarioObj?.userName
+                        })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        return { success: true, data: result };
+                    } else {
+                        throw new Error('Error en el servidor');
+                    }
+                } catch (error) {
+                    console.error('Error creating ticket:', error);
+                    
+                    // Fallback: simular ticket para demo (mientras no tienes backend)
+                    const newTicket = {
+                        id: Date.now(),
+                        tipo: ticketData.tipo,
+                        descripcion: ticketData.descripcion,
+                        prioridad: ticketData.prioridad,
+                        estado: 'PENDIENTE',
+                        fechaCreacion: new Date().toISOString(),
+                        usuarioSolicitante: ticketData.usuarioSolicitante
+                    };
+                    
+                    // Guardar en localStorage temporalmente
+                    const existingTickets = JSON.parse(localStorage.getItem('userTickets') || '[]');
+                    existingTickets.unshift(newTicket);
+                    localStorage.setItem('userTickets', JSON.stringify(existingTickets));
+                    
+                    return { success: true, data: newTicket };
+                }
+            }
+
+            // Función para cargar tickets del usuario
+            async function loadUserTickets() {
+                try {
+                    const response = await fetch(`/api/tickets/usuario/${usuarioObj?.id}`);
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        userTickets = result.data || [];
+                    } else {
+                        throw new Error('Error al cargar tickets');
+                    }
+                } catch (error) {
+                    console.error('Error loading tickets:', error);
+                    
+                    // Fallback: cargar desde localStorage
+                    userTickets = JSON.parse(localStorage.getItem('userTickets') || '[]');
+                }
+                
+                renderTicketsList();
+            }
+
+            // Función para renderizar lista de tickets
+            function renderTicketsList() {
+                if (userTickets.length === 0) {
+                    ticketsList.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-ticket-alt"></i>
+                            <p>No tienes tickets creados</p>
+                            <small>Crea tu primer ticket usando la pestaña "Crear Ticket"</small>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const ticketsHtml = userTickets.map(ticket => {
+                    const typeClass = ticket.tipo === 'SOLICITUD_FUNCION' ? 'solicitud' : 'problema';
+                    const typeLabel = ticket.tipo === 'SOLICITUD_FUNCION' ? 'Solicitud' : 'Problema';
+                    const statusLabel = {
+                        'PENDIENTE': 'Pendiente',
+                        'EN_PROCESO': 'En Proceso',
+                        'RESUELTO': 'Resuelto'
+                    }[ticket.estado] || 'Pendiente';
+                    
+                    const fechaCreacion = new Date(ticket.fechaCreacion).toLocaleDateString('es-ES');
+                    
+                    return `
+                        <div class="ticket-item">
+                            <div class="ticket-header">
+                                <div style="display: flex; align-items: center;">
+                                    <span class="ticket-type ${typeClass}">${typeLabel}</span>
+                                    <div class="ticket-priority priority-${ticket.prioridad}">${ticket.prioridad}</div>
+                                </div>
+                                <span class="ticket-status ${ticket.estado.toLowerCase().replace('_', '-')}">${statusLabel}</span>
+                            </div>
+                            <div class="ticket-description">${ticket.descripcion}</div>
+                            <div class="ticket-meta">
+                                <span>Creado: ${fechaCreacion}</span>
+                                <span>#${ticket.id}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                ticketsList.innerHTML = ticketsHtml;
+            }
+
+            // Manejo del envío del formulario
+            ticketForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                if (!selectedPriority) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Selecciona una prioridad',
+                        text: 'Debes seleccionar el nivel de prioridad del ticket',
+                        confirmButtonText: 'Entendido'
+                    });
+                    return;
+                }
+
+                const formData = new FormData(this);
+                const ticketData = {
+                    tipo: formData.get('tipo'),
+                    descripcion: formData.get('descripcion'),
+                    prioridad: selectedPriority,
+                    usuarioSolicitante: formData.get('usuario')
+                };
+
+                // Mostrar loading
+                const submitBtn = this.querySelector('.submit-ticket-btn');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+                submitBtn.disabled = true;
+
+                try {
+                    const result = await createTicket(ticketData);
+                    
+                    if (result.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Ticket Creado!',
+                            html: `Tu ticket ha sido creado exitosamente.<br><br>
+                                   <strong>ID:</strong> #${result.data.id}<br>
+                                   <strong>Tipo:</strong> ${ticketData.tipo === 'SOLICITUD_FUNCION' ? 'Solicitud de Función' : 'Reportar Problema'}<br>
+                                   <strong>Prioridad:</strong> ${selectedPriority}`,
+                            confirmButtonText: 'Ver mis tickets'
+                        }).then(() => {
+                            // Cambiar a la pestaña de ver tickets
+                            document.querySelector('.tickets-tab[data-tab="view"]').click();
+                            resetTicketForm();
+                        });
+                    }
+                } catch (error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al crear ticket',
+                        text: 'Hubo un problema al crear el ticket. Inténtalo nuevamente.',
+                        confirmButtonText: 'Entendido'
+                    });
+                } finally {
+                    // Restaurar botón
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            });
+
+            // Cerrar panel con tecla Escape
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && ticketsPanel.classList.contains('active')) {
+                    closeTicketsPanel();
+                }
+            });
+
+            // Cargar tickets al inicializar
+            loadUserTickets();
         });
     </script>
 </body>

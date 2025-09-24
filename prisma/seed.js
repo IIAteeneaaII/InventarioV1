@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { seedReparaciones } = require('../scripts/seed_reparaciones');
 const prisma = new PrismaClient();
 
 
@@ -184,7 +185,7 @@ async function main() {
         FROM "User" u WHERE u.id = p_user_id;
 
         -- Devolver las transiciones disponibles según el estado y rol
-        RETURN QUERY
+    RETURN QUERY
         SELECT te."nombreEvento"
         FROM "TransicionEstado" te
         WHERE te."estadoDesdeId" = v_estado_actual_id
@@ -196,6 +197,10 @@ async function main() {
     END;
     $$ LANGUAGE plpgsql;
   `);
+
+  // Seed del sistema de reparaciones
+  console.log('Iniciando seed del sistema de reparaciones...');
+  await seedReparaciones();
 
 }
 

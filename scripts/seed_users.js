@@ -11,6 +11,7 @@ async function main() {
   const usuarios = [
     { nombre: 'Registro', userName: 'Registro', email: 'registroram756@gmail.com', rol: 'UReg' },
     { nombre: 'Test Inicial', userName: 'Testini', email: 'testinicialram@gmail.com', rol: 'UTI' },
+    { nombre: 'Reparacion', userName: 'Reparacion', email: 'reparacionram@gmail.com', rol: 'URep' },
     { nombre: 'Cosmetica', userName: 'Cosmetica', email: 'cosmeticaram78@gmail.com', rol: 'UC' },
     { nombre: 'Retest', userName: 'Retest', email: 'retestram@gmail.com', rol: 'UR' },
     { nombre: 'Ensamble', userName: 'Ensamble', email: 'ramensamble@gmail.com', rol: 'UEN' },
@@ -22,6 +23,10 @@ async function main() {
     { nombre: 'Usuario UAI 3', userName: 'alopez', email: 'alopez_nextgen@outlook.com', rol: 'UAI' },
     { nombre: 'Usuario UAI 4', userName: 'nextgenit15', email: 'nextgenit15@outlook.com', rol: 'UAI' },
     { nombre: 'Usuario UAI 5', userName: 'totalplay', email: 'totalplay@ramelectronics.com.mx', rol: 'UV' },
+    
+    // Usuarios adicionales URep
+    { nombre: 'Reparacion 1', userName: 'urep1', email: 'urep1@ramelectronics.com.mx', rol: 'URep' },
+    { nombre: 'Reparacion 2', userName: 'urep2', email: 'urep2@ramelectronics.com.mx', rol: 'URep' },
   ];
 
   for (const u of usuarios) {

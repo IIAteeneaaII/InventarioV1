@@ -77,7 +77,7 @@ exports.login = async (req, res) => {
     });
 
     // Determinar redirección según rol
-    const rolesSeleccionLote = ['UReg', 'UTI', 'UR', 'UE', 'UEN'];
+    const rolesSeleccionLote = ['UReg', 'UTI', 'UR', 'UE', 'UEN', 'URep'];
     let redirectTo;
     
     switch (user.rol) {
@@ -94,6 +94,9 @@ exports.login = async (req, res) => {
         redirectTo = '/almacen';
         break;
       case 'UReg':
+        redirectTo = '/seleccionlote';
+        break;
+      case 'URep':
         redirectTo = '/seleccionlote';
         break;
       default:

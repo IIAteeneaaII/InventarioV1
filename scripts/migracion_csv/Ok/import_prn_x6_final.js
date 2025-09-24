@@ -6,6 +6,18 @@ const fs = require('fs');
 const path = require('path');
 const prisma = new PrismaClient();
 
+// Importar funciones nuevas
+const {
+  procesarSNsEnLotes,
+  getEstadoWithCache,
+  createBatchRegistros,
+  cambiarFaseDesdeCsv,
+  procesarMultiplesCSV
+} = require('../../../function_fragments/nuevas_funciones.js');
+
+// Importar función de borrado de lotes
+const { borrarLoteCompleto } = require('../../../function_fragments/borrarLoteCompleto.js');
+
 // Mapeo de materiales a SKUs basado en seed.js
 const MATERIAL_TO_SKU = {
   '72676': { id: 8, nombre: 'V5SMALL' },
@@ -169,7 +181,9 @@ function parseDate(dateStr) {
 }
 
 function detectCSVStructure(lines, delimiter) {
-  if (lines.length === 0) return null;
+  if (lines.length === 0) {
+    return null;
+  }
   
   // Analizar primera línea para detectar headers
   const firstLineCols = parseCSVLine(lines[0], delimiter);
@@ -270,6 +284,27 @@ function parseRowsFromContent(content) {
   }
   
   if (structure.serialCol === -1) {
+    // Intentar tratar como lista simple de SNs
+    console.log('🔍 Intentando procesar como lista simple de números de serie...');
+    
+    const rows = [];
+    for (const line of lines) {
+      const sn = line.trim().toUpperCase(); // Forzar mayúsculas
+      if (sn.length >= 6) {
+        rows.push({
+          material: 'UNKNOWN',
+          serialNumber: sn,
+          folio: `F${Date.now()}`,
+          fechaRecibo: new Date()
+        });
+      }
+    }
+    
+    if (rows.length > 0) {
+      console.log(`✅ Se procesaron ${rows.length} números de serie como lista simple`);
+      return rows;
+    }
+    
     console.error('❌ No se pudo detectar la columna de número de serie');
     console.log('💡 Estructura encontrada:', structure);
     console.log('💡 Muestra de datos:');
@@ -288,82 +323,83 @@ function parseRowsFromContent(content) {
   
   console.log(`🔄 Procesando ${dataLines.length} líneas de datos...`);
   
-  for (let i = 0; i < dataLines.length; i++) {
-    const line = dataLines[i];
-    try {
-      const cols = parseCSVLine(line, delimiter);
-      
-      if (cols.length >= Math.max(structure.serialCol + 1, structure.materialCol + 1)) {
-        const serialNumber = cols[structure.serialCol]?.trim();
+  // Procesar en lotes para mejorar rendimiento
+  const batchSize = 1000;
+  
+  for (let i = 0; i < dataLines.length; i += batchSize) {
+    const batch = dataLines.slice(i, i + batchSize);
+    
+    // Procesar este lote
+    for (const line of batch) {
+      try {
+        const cols = parseCSVLine(line, delimiter);
         
-        if (serialNumber && serialNumber.length >= 6) {
-          // Intentar extraer material del nombre del archivo o usar UNKNOWN
-          let material = 'UNKNOWN';
+        if (cols.length >= Math.max(structure.serialCol + 1, structure.materialCol + 1)) {
+          // Forzar mayúsculas en el número de serie
+          const serialNumber = cols[structure.serialCol]?.trim().toUpperCase();
           
-          // Si no hay columna de material, intentar deducirlo del contexto
-          if (structure.materialCol === -1) {
-            // Buscar en el serial si contiene patrones conocidos
-            const serialUpper = serialNumber.toUpperCase();
-            if (serialUpper.includes('4857') || serialUpper.match(/^[A-F0-9]{16}$/)) {
-              // Patrón típico de V5 o X6
-              if (serialUpper.startsWith('4857')) {
-                material = '79735'; // X6 por defecto para este patrón
+          if (serialNumber && serialNumber.length >= 6) {
+            // Resto del código para construir el objeto row
+            let material = 'UNKNOWN';
+            
+            if (structure.materialCol >= 0 && cols[structure.materialCol]) {
+              material = cols[structure.materialCol].trim();
+            } else {
+              // Intentar deducir material del serial
+              const serialUpper = serialNumber;
+              if (serialUpper.includes('4857') || serialUpper.match(/^[A-F0-9]{16}$/)) {
+                if (serialUpper.startsWith('4857')) {
+                  material = '79735'; // X6 por defecto para este patrón
+                }
+              }
+            }
+            
+            let fechaRecibo;
+            try {
+              fechaRecibo = structure.fechaCol >= 0 ? parseDate(cols[structure.fechaCol]?.trim() || '') : new Date();
+            } catch (e) {
+              fechaRecibo = new Date();
+            }
+            
+            const row = {
+              material: material,
+              serialNumber: serialNumber, // Ya en mayúsculas
+              folio: structure.folioCol >= 0 ? cols[structure.folioCol]?.trim().toUpperCase() || `F${Date.now()}${i}` : `F${Date.now()}${i}`,
+              fechaRecibo: fechaRecibo
+            };
+            
+            rows.push(row);
+            processedCount++;
+            
+            // Para archivos con columnas Entrada/Salida, procesar también la salida si existe
+            if (structure.salidaCol >= 0 && cols[structure.salidaCol]?.trim() && 
+                cols[structure.salidaCol].trim() !== serialNumber) {
+              const salidaSerial = cols[structure.salidaCol].trim().toUpperCase();
+              if (salidaSerial.length >= 6) {
+                const salidaRow = {
+                  material: material,
+                  serialNumber: salidaSerial,
+                  folio: structure.folioCol >= 0 ? cols[structure.folioCol]?.trim().toUpperCase() || `F${Date.now()}${i}S` : `F${Date.now()}${i}S`,
+                  fechaRecibo: fechaRecibo
+                };
+                rows.push(salidaRow);
+                processedCount++;
               }
             }
           } else {
-            material = cols[structure.materialCol]?.trim() || 'UNKNOWN';
-          }
-          
-          let fechaRecibo;
-          try {
-            fechaRecibo = structure.fechaCol >= 0 ? parseDate(cols[structure.fechaCol]?.trim() || '') : new Date();
-          } catch (e) {
-            fechaRecibo = new Date(); // Fecha por defecto si no se puede parsear
-          }
-          
-          const row = {
-            material: material,
-            serialNumber: serialNumber,
-            folio: structure.folioCol >= 0 ? cols[structure.folioCol]?.trim() || `F${Date.now()}${i}` : `F${Date.now()}${i}`,
-            fechaRecibo: fechaRecibo
-          };
-          
-          rows.push(row);
-          processedCount++;
-          
-          // Para archivos con columnas Entrada/Salida, procesar también la salida si existe
-          if (structure.salidaCol >= 0 && cols[structure.salidaCol]?.trim() && 
-              cols[structure.salidaCol].trim() !== serialNumber) {
-            const salidaSerial = cols[structure.salidaCol].trim();
-            if (salidaSerial.length >= 6) {
-              const salidaRow = {
-                material: material,
-                serialNumber: salidaSerial,
-                folio: structure.folioCol >= 0 ? cols[structure.folioCol]?.trim() || `F${Date.now()}${i}S` : `F${Date.now()}${i}S`,
-                fechaRecibo: fechaRecibo
-              };
-              rows.push(salidaRow);
-              processedCount++;
-            }
+            skippedCount++;
           }
         } else {
           skippedCount++;
-          if (skippedCount <= 5) {
-            console.warn(`⚠️ Línea ${i + 1} ignorada - Serial inválido: "${serialNumber}"`);
-          }
         }
-      } else {
+      } catch (e) {
         skippedCount++;
-        if (skippedCount <= 5) {
-          console.warn(`⚠️ Línea ${i + 1} ignorada - Columnas insuficientes: ${cols.length}`);
-        }
-      }
-    } catch (e) {
-      skippedCount++;
-      if (skippedCount <= 5) {
-        console.warn(`⚠️ Línea ${i + 1} ignorada - Error: ${e.message}`);
       }
     }
+    
+    // Mostrar progreso
+    const progreso = Math.min(i + batchSize, dataLines.length);
+    console.log(`   ✅ Progreso de análisis: ${progreso}/${dataLines.length} (${Math.round(progreso/dataLines.length*100)}%)`);
   }
   
   console.log(`✅ Procesamiento completado:`);
@@ -455,6 +491,97 @@ function previewFileContent(filePath) {
       success: false, 
       message: `Error al leer el archivo: ${error.message}` 
     };
+  }
+}
+
+// Añadir la función previewFileOnly que faltaba
+async function previewFileOnly() {
+  try {
+    console.log('\n🔍 VISTA PREVIA DE ARCHIVO 🔍\n');
+    
+    await loadInquirer();
+    
+    console.log('📂 Buscando archivos...');
+    const files = await findCSVFiles();
+    
+    if (files.length === 0) {
+      console.log('❌ No se encontraron archivos CSV/TXT/PRN en el directorio');
+      return;
+    }
+
+    const { filePath } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'filePath',
+        message: 'Selecciona el archivo a visualizar:',
+        choices: [
+          ...files.map(f => ({ name: `📄 ${path.basename(f)} (${f})`, value: f })),
+          { name: '📂 Especificar ruta manualmente...', value: 'manual' }
+        ]
+      }
+    ]);
+
+    let selectedFile = filePath;
+    if (filePath === 'manual') {
+      const { manualPath } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'manualPath',
+          message: 'Ingresa la ruta completa del archivo:',
+          validate: (input) => fs.existsSync(input) ? true : 'El archivo no existe'
+        }
+      ]);
+      selectedFile = manualPath;
+    }
+
+    console.log(`\n📂 Analizando archivo: ${selectedFile}`);
+    const preview = previewFileContent(selectedFile);
+    
+    if (!preview.success) {
+      console.error(`❌ ${preview.message}`);
+      return;
+    }
+    
+    console.log(`\n📊 Datos detectados:`);
+    console.log(`   - Total de filas: ${preview.totalRows}`);
+    console.log(`   - Materiales únicos: ${preview.uniqueMaterials.length}`);
+    console.log(`   - Materiales: ${preview.uniqueMaterials.join(', ')}`);
+    console.log(`   - Folios (primeros 5): ${preview.uniqueFolios.join(', ')}`);
+    console.log(`   - Rango de fechas: ${preview.dateRange.min.toLocaleDateString()} - ${preview.dateRange.max.toLocaleDateString()}`);
+    console.log(`\n📑 Vista previa (primeras ${preview.previewRows.length} filas):`);
+    preview.previewRows.forEach((row, i) => {
+      console.log(`   ${i+1}. Material: ${row.material}, SN: ${row.serialNumber}, Folio: ${row.folio}, Fecha: ${row.fechaRecibo.toLocaleDateString()}`);
+    });
+
+    const { verMas } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'verMas',
+        message: '¿Deseas ver más filas?',
+        default: false
+      }
+    ]);
+
+    if (verMas) {
+      const content = readTextSmart(selectedFile);
+      const rows = parseRowsFromContent(content);
+      const { cantidadFilas } = await inquirer.prompt([
+        {
+          type: 'number',
+          name: 'cantidadFilas',
+          message: 'Número de filas a mostrar:',
+          default: 10,
+          validate: (input) => input > 0 && input <= Math.min(100, rows.length) ? true : `Ingresa un número entre 1 y ${Math.min(100, rows.length)}`
+        }
+      ]);
+      
+      console.log(`\n📑 Mostrando ${cantidadFilas} filas:`);
+      rows.slice(0, cantidadFilas).forEach((row, i) => {
+        console.log(`   ${i+1}. Material: ${row.material}, SN: ${row.serialNumber}, Folio: ${row.folio}, Fecha: ${row.fechaRecibo.toLocaleDateString()}`);
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error durante la vista previa:', error);
   }
 }
 
@@ -662,7 +789,7 @@ async function procesarModemsAEmpaqueReal(modems, userId, estadoMap) {
               userId: userId,
               loteId: modem.loteId,
               modemId: modem.id,
-              createdAt: now,
+              createdAt: now
             }
           });
           
@@ -671,7 +798,7 @@ async function procesarModemsAEmpaqueReal(modems, userId, estadoMap) {
             data: {
               faseActual: 'EMPAQUE',
               estadoActualId: estadoEmpaqueId,
-              updatedAt: now,
+              updatedAt: now
             }
           });
         });
@@ -830,23 +957,8 @@ async function importInteractive() {
     let userId;
     
     if (usuariosUA.length > 0) {
-      if (usuariosUA.length === 1) {
-        userId = usuariosUA[0].id;
-        console.log(`👤 Usuario seleccionado automáticamente: ${usuariosUA[0].nombre} (${usuariosUA[0].userName})`);
-      } else {
-        const { selectedUserId } = await inquirer.prompt([
-          {
-            type: 'list',
-            name: 'selectedUserId',
-            message: 'Selecciona el usuario responsable (UA):',
-            choices: usuariosUA.map(u => ({ 
-              name: `${u.nombre} (${u.userName})`, 
-              value: u.id 
-            }))
-          }
-        ]);
-        userId = selectedUserId;
-      }
+      userId = usuariosUA[0].id;
+      console.log(`👤 Usuario seleccionado automáticamente: ${usuariosUA[0].nombre} (UA)`);
     } else {
       console.log('⚠️ No hay usuarios con rol UA disponibles');
       const { selectedUserId } = await inquirer.prompt([
@@ -1268,26 +1380,22 @@ async function importarEntradaYSalida() {
     ]);
     skuId = selectedSkuId;
 
-    // Seleccionar usuario
+    // Seleccionar usuario (automáticamente selecciona usuario UA)
     const usuariosUA = usuarios.filter(u => u.rol === 'UA');
     let userId;
     
-    if (usuariosUA.length === 1) {
+    if (usuariosUA.length > 0) {
       userId = usuariosUA[0].id;
-      console.log(`👤 Usuario seleccionado: ${usuariosUA[0].nombre}`);
+      console.log(`👤 Usuario seleccionado automáticamente: ${usuariosUA[0].nombre} (UA)`);
     } else {
-      const { selectedUserId } = await inquirer.prompt([
-        {
-          type: 'list',
-          name: 'selectedUserId',
-          message: 'Selecciona el usuario responsable:',
-          choices: usuarios.map(u => ({ 
-            name: `${u.nombre} (${u.userName}) - ${u.rol}`, 
-            value: u.id 
-          }))
-        }
-      ]);
-      userId = selectedUserId;
+      console.log('⚠️ No se encontraron usuarios con rol UA, seleccionando el primero disponible...');
+      userId = usuarios[0]?.id;
+      if (userId) {
+        console.log(`👤 Usuario seleccionado: ${usuarios[0].nombre} (${usuarios[0].rol})`);
+      } else {
+        console.error('❌ No se encontraron usuarios disponibles');
+        return;
+      }
     }
 
     // Configurar lote
@@ -1304,7 +1412,7 @@ async function importarEntradaYSalida() {
     ]);
 
     console.log(`\n📋 Resumen de la importación:`);
-    console.log(`   - Archivo: ${path.basename(filePath)}`); // Corregido: filePath en lugar de selectedFile
+    console.log(`   - Archivo: ${path.basename(filePath)}`);
     console.log(`   - Tipo: ${tipoImportacion}`);
     console.log(`   - SKU: ${skus.find(s => s.id === skuId)?.nombre}`);
     console.log(`   - Lote: ${loteNumero}`);
@@ -1343,7 +1451,8 @@ async function importarEntradaYSalida() {
       skuId, 
       userId, 
       loteNumero, 
-      estadoMap
+      estadoMap,
+      filePath
     );
 
   } catch (error) {
@@ -1354,13 +1463,11 @@ async function importarEntradaYSalida() {
   }
 }
 
-// ------------------ Función de Procesamiento de Entrada y Salida ------------------
-
-async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaciones, skuId, userId, loteNumero, estadoMap) {
+async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaciones, skuId, userId, loteNumero, estadoMap, filePath) {
   try {
-    console.log('\n⏳ Iniciando procesamiento...');
+    console.log('\n📥📦 INICIANDO IMPORTACIÓN DE ENTRADA Y SALIDA 📥📦');
     
-    // Verificar si el lote ya existe
+    // Verificar si el lote ya existe o crearlo
     let lote = await prisma.lote.findUnique({
       where: { numero: loteNumero }
     });
@@ -1382,13 +1489,31 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
       });
       console.log(`✅ Lote creado: ${lote.numero}`);
     }
-
+    
+    const estadoEmpaqueId = estadoMap['EMPAQUE'] || estadoMap['RETEST'];
+    const estadoRegistroId = estadoMap['REGISTRO'];
+    const estadoTestInicialId = estadoMap['TEST_INICIAL'] || estadoMap['RETEST'];
+    const estadoEnsambleId = estadoMap['ENSAMBLE'] || estadoMap['RETEST'];
+    const estadoRetestId = estadoMap['RETEST'];
+    
+    // Verificar que al menos tengamos RETEST como estado base
+    if (!estadoRetestId) {
+      console.error('❌ Estado RETEST no encontrado. Verificar configuración de estados.');
+      return;
+    }
+    
+    // Usar RETEST como fallback si otros estados no existen
+    const estadoFinal = estadoEmpaqueId || estadoRetestId;
+    const estadoInicial = estadoRegistroId || estadoRetestId;
+    
+    const batchSize = 50;
     let procesados = 0;
     let fallidos = 0;
-    const batchSize = 50;
-
+    let noEncontrados = 0;
+    
+    // Procesar solo ENTRADAS
     if (tipo === 'entradas') {
-      console.log('\n📥 Procesando solo ENTRADAS (REGISTRO)...');
+      console.log(`\n📥 Procesando ${entradas.length} módems como ENTRADAS...`);
       
       for (let i = 0; i < entradas.length; i += batchSize) {
         const batch = entradas.slice(i, i + batchSize);
@@ -1396,55 +1521,40 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
         
         for (const entrada of batch) {
           try {
-            await prisma.$transaction(async (tx) => {
-              // Verificar si ya existe el módem
-              const existingModem = await tx.modem.findUnique({
-                where: { sn: entrada.sn }
-              });
-
-              if (!existingModem) {
-                // Crear módem en REGISTRO
-                const modem = await tx.modem.create({
-                  data: {
-                    sn: entrada.sn,
-                    skuId: skuId,
-                    estadoActualId: estadoMap['REGISTRO'] || estadoMap['RETEST'],
-                    faseActual: 'REGISTRO',
-                    loteId: lote.id,
-                    responsableId: userId,
-                    createdAt: entrada.fecha,
-                  }
-                });
-
-                // Crear registro de REGISTRO
-                await tx.registro.create({
-                  data: {
-                    sn: entrada.sn,
-                    fase: 'REGISTRO',
-                    estado: 'SN_OK',
-                    userId: userId,
-                    loteId: lote.id,
-                                        modemId: modem.id,
-                    createdAt: entrada.fecha,
-                  }
-                });
-
-                procesados++;
-              } else {
-                console.log(`   ⚠️ Módem ${entrada.sn} ya existe, omitiendo...`);
-              }
+            // Verificar si ya existe el módem
+            const existingModem = await prisma.modem.findUnique({
+              where: { sn: entrada.sn }
             });
+            
+            if (!existingModem) {
+              // Crear el módem
+              await prisma.modem.create({
+                data: {
+                  sn: entrada.sn,
+                  skuId: skuId,
+                  estadoActualId: estadoInicial,
+                  faseActual: 'REGISTRO',
+                  loteId: lote.id,
+                  responsableId: userId,
+                  createdAt: entrada.fecha,
+                }
+              });
+              
+              procesados++;
+            } else {
+              console.log(`   ⚠️ Módem ${entrada.sn} ya existe, omitiendo...`);
+            }
           } catch (error) {
             fallidos++;
-            if (fallidos <= 5) {
-              console.error(`   ❌ Error procesando entrada ${entrada.sn}: ${error.message}`);
-            }
+            console.error(`   ❌ Error procesando entrada ${entrada.sn}: ${error.message}`);
           }
         }
       }
-    } else if (tipo === 'salidas') {
-      console.log('\n📦 Procesando SALIDAS (buscar por SN de entrada y actualizar a EMPAQUE)...');
-      let noEncontrados = 0;
+    } 
+    // Procesar solo SALIDAS
+    else if (tipo === 'salidas') {
+      console.log(`\n📦 Procesando ${salidas.length} módems como SALIDAS...`);
+      noEncontrados = 0;
       
       for (let i = 0; i < salidas.length; i += batchSize) {
         const batch = salidas.slice(i, i + batchSize);
@@ -1452,18 +1562,19 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
         
         for (const salida of batch) {
           try {
-            await prisma.$transaction(async (tx) => {
-              // Buscar el módem por SN de entrada que corresponde a esta salida
-              const entradaSN = Array.from(relaciones.entries())
-                .find(([entrada, salidaSN]) => salidaSN === salida.sn)?.[0];
+            // Buscar el módem por SN de entrada que corresponde a esta salida
+            const entradaSN = Array.from(relaciones.entries())
+              .find(([entrada, salidaSN]) => salidaSN === salida.sn)?.[0];
 
-              if (entradaSN) {
-                // Buscar el módem por SN de entrada
-                const modem = await tx.modem.findUnique({
-                  where: { sn: entradaSN }
-                });
+            if (entradaSN) {
+              // Buscar el módem por SN de entrada
+              const modem = await prisma.modem.findUnique({
+                where: { sn: entradaSN }
+              });
 
-                if (modem) {
+              if (modem) {
+                // Usar transacción para asegurar que todas las operaciones se completen
+                await prisma.$transaction(async (tx) => {
                   // Crear las fases intermedias necesarias antes de EMPAQUE
                   const fases = ['TEST_INICIAL', 'ENSAMBLE', 'RETEST', 'EMPAQUE'];
                   let lastDateTime = modem.createdAt || new Date();
@@ -1475,14 +1586,31 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
                     // Si es la última fase (EMPAQUE), usar la fecha de salida real
                     const fechaFinal = fase === 'EMPAQUE' ? salida.fecha : fechaFase;
                     
+                    // Obtener el estado correspondiente para esta fase
+                    let estadoId;
+                    switch (fase) {
+                      case 'TEST_INICIAL': 
+                        estadoId = estadoTestInicialId; 
+                        break;
+                      case 'ENSAMBLE': 
+                        estadoId = estadoEnsambleId; 
+                        break;
+                      case 'RETEST': 
+                        estadoId = estadoRetestId; 
+                        break;
+                      case 'EMPAQUE': 
+                        estadoId = estadoEmpaqueId; 
+                        break;
+                      default: 
+                        estadoId = estadoRetestId;
+                    }
+                    
                     // Actualizar módem a la fase actual
                     await tx.modem.update({
                       where: { id: modem.id },
                       data: {
                         faseActual: fase,
-                        estadoActualId: fase === 'EMPAQUE' ? 
-                          (estadoMap['EMPAQUE'] || estadoMap['RETEST']) : 
-                          (estadoMap['RETEST'] || estadoMap['REGISTRO']),
+                        estadoActualId: estadoId,
                         updatedAt: fechaFinal,
                       }
                     });
@@ -1502,21 +1630,21 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
                     
                     lastDateTime = fechaFinal;
                   }
-                  
-                  procesados++;
-                } else {
-                  noEncontrados++;
-                  if (noEncontrados <= 5) {
-                    console.warn(`   ⚠️ No se encontró módem con SN de entrada: ${entradaSN} para salida: ${salida.sn}`);
-                  }
-                }
+                });
+                
+                procesados++;
               } else {
                 noEncontrados++;
                 if (noEncontrados <= 5) {
-                  console.warn(`   ⚠️ No se encontró relación entrada→salida para: ${salida.sn}`);
+                  console.warn(`   ⚠️ No se encontró módem con SN de entrada: ${entradaSN} para salida: ${salida.sn}`);
                 }
               }
-            });
+            } else {
+              noEncontrados++;
+              if (noEncontrados <= 5) {
+                console.warn(`   ⚠️ No se encontró relación entrada→salida para: ${salida.sn}`);
+              }
+            }
           } catch (error) {
             fallidos++;
             if (fallidos <= 5) {
@@ -1525,8 +1653,10 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
           }
         }
       }
-    } else if (tipo === 'completo') {
-      console.log('\n🔄 Procesando FLUJO COMPLETO (ENTRADA → EMPAQUE)...');
+    } 
+    // PROCESO COMPLETO
+    else if (tipo === 'completo') {
+      console.log(`\n🔄 Procesando ${entradas.length} módems como ENTRADAS y ${salidas.length} módems como SALIDAS...`);
       
       // Primero procesar las entradas como REGISTRO
       console.log('\n📥 Paso 1: Creando módems en REGISTRO...');
@@ -1536,47 +1666,30 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
         
         for (const entrada of batch) {
           try {
-            await prisma.$transaction(async (tx) => {
-              // Verificar si ya existe
-              const existingModem = await tx.modem.findUnique({
-                where: { sn: entrada.sn }
-              });
-
-              if (!existingModem) {
-                // Crear módem en REGISTRO
-                const modem = await tx.modem.create({
-                  data: {
-                    sn: entrada.sn,
-                    skuId: skuId,
-                    estadoActualId: estadoMap['REGISTRO'] || estadoMap['RETEST'],
-                    faseActual: 'REGISTRO',
-                    loteId: lote.id,
-                    responsableId: userId,
-                    createdAt: entrada.fecha,
-                  }
-                });
-
-                // Crear registro de REGISTRO
-                await tx.registro.create({
-                  data: {
-                    sn: entrada.sn,
-                    fase: 'REGISTRO',
-                    estado: 'SN_OK',
-                    userId: userId,
-                    loteId: lote.id,
-                    modemId: modem.id,
-                    createdAt: entrada.fecha,
-                  }
-                });
-
-                procesados++;
-              }
+            // Verificar si ya existe
+            const existingModem = await prisma.modem.findUnique({
+              where: { sn: entrada.sn }
             });
+            
+            if (!existingModem) {
+              // Crear el módem
+              await prisma.modem.create({
+                data: {
+                  sn: entrada.sn,
+                  skuId: skuId,
+                  estadoActualId: estadoInicial,
+                  faseActual: 'REGISTRO',
+                  loteId: lote.id,
+                  responsableId: userId,
+                  createdAt: entrada.fecha,
+                }
+              });
+              
+              procesados++;
+            }
           } catch (error) {
             fallidos++;
-            if (fallidos <= 5) {
-              console.error(`   ❌ Error procesando entrada ${entrada.sn}: ${error.message}`);
-            }
+            console.error(`   ❌ Error procesando entrada ${entrada.sn}: ${error.message}`);
           }
         }
       }
@@ -1584,7 +1697,7 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
       // Luego procesar las salidas y actualizar a EMPAQUE
       console.log('\n📦 Paso 2: Actualizando módems a EMPAQUE...');
       let empacados = 0;
-      let noEncontrados = 0;
+      noEncontrados = 0;
       
       for (let i = 0; i < salidas.length; i += batchSize) {
         const batch = salidas.slice(i, i + batchSize);
@@ -1592,37 +1705,73 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
         
         for (const salida of batch) {
           try {
-            await prisma.$transaction(async (tx) => {
-              // Buscar el módem por SN de entrada que corresponde a esta salida
-              const entradaSN = Array.from(relaciones.entries())
-                .find(([entrada, salidaSN]) => salidaSN === salida.sn)?.[0];
+            // Buscar el módem por SN de entrada que corresponde a esta salida
+            const entradaSN = Array.from(relaciones.entries())
+              .find(([entrada, salidaSN]) => salidaSN === salida.sn)?.[0];
 
-              if (entradaSN) {
-                // Buscar el módem por SN de entrada
-                const modem = await tx.modem.findUnique({
-                  where: { sn: entradaSN }
-                });
+            if (entradaSN) {
+              // Buscar el módem por SN de entrada
+              const modem = await prisma.modem.findUnique({
+                where: { sn: entradaSN }
+              });
 
-                if (modem) {
-                  // Crear las fases intermedias necesarias antes de EMPAQUE
-                  const fases = ['TEST_INICIAL', 'ENSAMBLE', 'RETEST', 'EMPAQUE'];
-                  let lastDateTime = modem.createdAt || new Date();
+              if (modem) {
+                // Verificar si el módem ya está en EMPAQUE o más allá
+                if (modem.faseActual === 'EMPAQUE' || modem.faseActual === 'SCRAP' || modem.faseActual === 'REPARACION') {
+                  console.log(`   ⚠️ Módem ${entradaSN} ya está en fase ${modem.faseActual}, saltando...`);
+                  empacados++; // Contar como procesado
+                  continue;
+                }
+
+                // Usar transacción para asegurar que todas las operaciones se completen
+                await prisma.$transaction(async (tx) => {
+                  // Definir el orden de las fases
+                  const faseOrder = ['REGISTRO', 'TEST_INICIAL', 'ENSAMBLE', 'RETEST', 'EMPAQUE'];
+                  const currentIndex = faseOrder.indexOf(modem.faseActual);
+                  const targetIndex = faseOrder.indexOf('EMPAQUE');
                   
-                  for (const fase of fases) {
+                  // Solo procesar fases que estén después de la actual
+                  const fasesAProcesar = faseOrder.slice(Math.max(0, currentIndex + 1), targetIndex + 1);
+                  
+                  if (fasesAProcesar.length === 0) {
+                    console.log(`   ⚠️ Módem ${entradaSN} ya procesó todas las fases necesarias`);
+                    return;
+                  }
+                  
+                  let lastDateTime = modem.updatedAt || modem.createdAt || new Date();
+                  
+                  for (const fase of fasesAProcesar) {
                     // Calcular fecha para esta fase (30 minutos después de la anterior)
                     const fechaFase = new Date(lastDateTime.getTime() + 30 * 60000);
                     
                     // Si es la última fase (EMPAQUE), usar la fecha de salida real
                     const fechaFinal = fase === 'EMPAQUE' ? salida.fecha : fechaFase;
                     
+                    // Obtener el estado correspondiente para esta fase
+                    let estadoId;
+                    switch (fase) {
+                      case 'TEST_INICIAL': 
+                        estadoId = estadoTestInicialId; 
+                        break;
+                      case 'ENSAMBLE': 
+                        estadoId = estadoEnsambleId; 
+                        break;
+                      case 'RETEST': 
+                        estadoId = estadoRetestId; 
+                        break;
+                      case 'EMPAQUE': 
+                        estadoId = estadoEmpaqueId; 
+                        break;
+                      default: 
+                        estadoId = estadoRetestId;
+                    }
+                    
                     // Actualizar módem a la fase actual
                     await tx.modem.update({
                       where: { id: modem.id },
                       data: {
                         faseActual: fase,
-                        estadoActualId: fase === 'EMPAQUE' ? 
-                          (estadoMap['EMPAQUE'] || estadoMap['RETEST']) : 
-                          (estadoMap['RETEST'] || estadoMap['REGISTRO']),
+                        estadoActualId: estadoId,
                         updatedAt: fechaFinal,
                       }
                     });
@@ -1642,21 +1791,21 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
                     
                     lastDateTime = fechaFinal;
                   }
-                  
-                  empacados++;
-                } else {
-                  noEncontrados++;
-                  if (noEncontrados <= 5) {
-                    console.warn(`   ⚠️ No se encontró módem con SN de entrada: ${entradaSN} para salida: ${salida.sn}`);
-                  }
-                }
+                });
+                
+                empacados++;
               } else {
                 noEncontrados++;
                 if (noEncontrados <= 5) {
-                  console.warn(`   ⚠️ No se encontró relación entrada→salida para: ${salida.sn}`);
+                  console.warn(`   ⚠️ No se encontró módem con SN de entrada: ${entradaSN} para salida: ${salida.sn}`);
                 }
               }
-            });
+            } else {
+              noEncontrados++;
+              if (noEncontrados <= 5) {
+                console.warn(`   ⚠️ No se encontró relación entrada→salida para: ${salida.sn}`);
+              }
+            }
           } catch (error) {
             fallidos++;
             if (fallidos <= 5) {
@@ -1668,7 +1817,6 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
       
       console.log(`   📦 Módems actualizados a EMPAQUE: ${empacados}`);
       console.log(`   ⚠️ Módems no encontrados: ${noEncontrados}`);
-      
     } else if (tipo === 'proceso') {
       console.log('\n⚠️ Procesando solo módems EN PROCESO (entrada sin salida)...');
       
@@ -1680,42 +1828,27 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
         
         for (const entrada of batch) {
           try {
-            await prisma.$transaction(async (tx) => {
-              // Verificar si ya existe
-              const existingModem = await tx.modem.findUnique({
-                where: { sn: entrada.sn }
-              });
-
-              if (!existingModem) {
-                // Crear módem en REGISTRO (en proceso)
-                const modem = await tx.modem.create({
-                  data: {
-                    sn: entrada.sn,
-                    skuId: skuId,
-                    estadoActualId: estadoMap['REGISTRO'] || estadoMap['RETEST'],
-                    faseActual: 'REGISTRO',
-                    loteId: lote.id,
-                    responsableId: userId,
-                    createdAt: entrada.fecha,
-                  }
-                });
-
-                // Crear registro de REGISTRO
-                await tx.registro.create({
-                  data: {
-                    sn: entrada.sn,
-                    fase: 'REGISTRO',
-                    estado: 'SN_OK',
-                    userId: userId,
-                    loteId: lote.id,
-                    modemId: modem.id,
-                    createdAt: entrada.fecha,
-                  }
-                });
-
-                procesados++;
-              }
+            // Verificar si ya existe
+            const existingModem = await prisma.modem.findUnique({
+              where: { sn: entrada.sn }
             });
+            
+            if (!existingModem) {
+              // Crear el módem
+              await prisma.modem.create({
+                data: {
+                  sn: entrada.sn,
+                  skuId: skuId,
+                  estadoActualId: estadoRegistroId,
+                  faseActual: 'REGISTRO',
+                  loteId: lote.id,
+                  responsableId: userId,
+                  createdAt: entrada.fecha,
+                }
+              });
+              
+              procesados++;
+            }
           } catch (error) {
             fallidos++;
             if (fallidos <= 5) {
@@ -1726,6 +1859,7 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
       }
     }
 
+    // Actualizar estado del lote
     await prisma.lote.update({
       where: { id: lote.id },
       data: { 
@@ -1784,62 +1918,28 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
   }
 }
 
-// ------------------ Menú Principal ------------------
+// ------------------ Función de Procesamiento Unificado: REGISTRO → EMPAQUE ------------------
 
-async function menuPrincipal() {
+async function procesarRegistroAEmpaque() {
   try {
+    console.log('\n🔄 PROCESADOR UNIFICADO: REGISTRO → EMPAQUE + MARCADO DE ANTIGUOS 🔄\n');
+    
     await loadInquirer();
     
-    console.log('\n🌟 SISTEMA DE GESTIÓN DE MÓDEMS 🌟\n');
-    
-    const { opcion } = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'opcion',
-        message: 'Selecciona una opción:',
-        choices: [
-          { name: '📥📦 Importar ENTRADA y SALIDA desde CSV', value: 'entrada_salida' },
-          { name: '📥 Importar módems desde archivo CSV (original)', value: 'importar' },
-          { name: '📦 Procesar módems a EMPAQUE', value: 'empaque' },
-          { name: '🔍 Vista previa de archivo', value: 'preview' },
-          { name: '❌ Salir', value: 'salir' }
-        ]
-      }
-    ]);
-    
-    switch (opcion) {
-      case 'entrada_salida':
-        await importarEntradaYSalida();
-        await menuPrincipal();
-        break;
-      case 'importar':
-        await importInteractive();
-        await menuPrincipal();
-        break;
-      case 'empaque':
-        await procesarModemsAEmpaque();
-        await menuPrincipal();
-        break;
-      case 'preview':
-        await previewFileOnly();
-        await menuPrincipal();
-        break;
-      case 'salir':
-        console.log('👋 ¡Hasta luego!');
-        break;
-    }
-    
-  } catch (error) {
-    console.error('❌ Error en el menú principal:', error);
-  }
-}
+    console.log('🔌 Conectando a la base de datos...');
+    await prisma.$connect();
+    console.log('✅ Conexión establecida\n');
 
-async function previewFileOnly() {
-  try {
-    await loadInquirer();
-    
-    console.log('\n🔍 VISTA PREVIA DE ARCHIVO 🔍\n');
-    
+    console.log('📚 Cargando datos...');
+    const usuarios = await prisma.user.findMany({ 
+      where: { activo: true },
+      orderBy: { nombre: 'asc' }
+    });
+    const estados = await prisma.estado.findMany();
+    const estadoMap = {};
+    estados.forEach(e => { estadoMap[e.nombre] = e.id; });
+
+    console.log('📂 Buscando archivos...');
     const files = await findCSVFiles();
     
     if (files.length === 0) {
@@ -1847,11 +1947,48 @@ async function previewFileOnly() {
       return;
     }
 
+    // Seleccionar usuario responsable para operaciones
+    const usuariosEmpaque = usuarios.filter(u => u.rol === 'UE' || u.rol === 'UA');
+    let userId;
+    
+    if (usuariosEmpaque.length === 0) {
+      console.log('⚠️ No hay usuarios con rol UE o UA disponibles');
+      const { selectedUserId } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'selectedUserId',
+          message: 'Selecciona un usuario:',
+          choices: usuarios.map(u => ({ 
+            name: `${u.nombre} (${u.userName}) - ${u.rol}`, 
+            value: u.id 
+          }))
+        }
+      ]);
+      userId = selectedUserId;
+    } else if (usuariosEmpaque.length === 1) {
+      userId = usuariosEmpaque[0].id;
+      console.log(`👤 Usuario seleccionado: ${usuariosEmpaque[0].nombre} (${usuariosEmpaque[0].userName})`);
+    } else {
+      const { selectedUserId } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'selectedUserId',
+          message: 'Selecciona el usuario responsable:',
+          choices: usuariosEmpaque.map(u => ({ 
+            name: `${u.nombre} (${u.userName}) - ${u.rol}`, 
+            value: u.id 
+          }))
+        }
+      ]);
+      userId = selectedUserId;
+    }
+
+    // Seleccionar archivo con SNs a procesar
     const { filePath } = await inquirer.prompt([
       {
         type: 'list',
         name: 'filePath',
-        message: 'Selecciona el archivo a previsualizar:',
+        message: 'Selecciona el archivo con los números de serie:',
         choices: [
           ...files.map(f => ({ name: `📄 ${path.basename(f)} (${f})`, value: f })),
           { name: '📂 Especificar ruta manualmente...', value: 'manual' }
@@ -1872,71 +2009,341 @@ async function previewFileOnly() {
       selectedFile = manualPath;
     }
 
-    const preview = previewFileContent(selectedFile);
+    console.log(`\n📂 Analizando archivo: ${selectedFile}`);
+    const content = readTextSmart(selectedFile);
     
-    if (!preview.success) {
-      console.error(`❌ ${preview.message}`);
+    // Extraer seriales únicos - soporta tanto formato CSV como lista simple de SNs
+    let seriales = [];
+    try {
+      const rows = parseRowsFromContent(content);
+      if (rows.length > 0) {
+        seriales = [...new Set(rows.map(r => r.serialNumber))];
+      } else {
+        // Si parseRowsFromContent no encuentra datos estructurados, procesar como lista simple
+        seriales = content.split(/[\r\n,]+/).map(s => s.trim()).filter(s => s && s.length > 5);
+      }
+    } catch (error) {
+      // Si hay error en el parsing, tratar como lista simple de SNs
+      seriales = content.split(/[\r\n,]+/).map(s => s.trim()).filter(s => s && s.length > 5);
+    }
+    
+    console.log(`✅ Se encontraron ${seriales.length} números de serie únicos en el archivo`);
+
+    // Fecha de corte para marcar módems antiguos
+    const fechaCorte = new Date('2025-09-15');
+
+    // Confirmar operación
+    console.log('\n📋 Resumen de operaciones a realizar:');
+    console.log(`   - Mover a EMPAQUE los módems que están en REGISTRO y aparecen en el archivo`);
+    console.log(`   - Marcar con prioridad 1 los módems en REGISTRO anteriores al 15/09/2025`);
+    console.log(`   - Números de serie a verificar: ${seriales.length}`);
+    console.log(`   - Usuario responsable: ${usuarios.find(u => u.id === userId)?.nombre}`);
+    console.log(`   - Los módems permanecerán en sus lotes originales`);
+    
+    const { confirmar } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirmar',
+        message: '¿Confirmas proceder con las operaciones?',
+        default: true
+      }
+    ]);
+
+    if (!confirmar) {
+      console.log('❌ Operación cancelada');
       return;
     }
 
-    console.log(`\n📊 ANÁLISIS COMPLETO DEL ARCHIVO:`);
-    console.log(`   📁 Archivo: ${path.basename(selectedFile)}`);
-    console.log(`   📏 Tamaño: ${fs.statSync(selectedFile).size} bytes`);
-    console.log(`   📊 Total de registros válidos: ${preview.totalRows}`);
-    console.log(`   🔧 Materiales únicos: ${preview.uniqueMaterials.length}`);
-    console.log(`   📋 Lista de materiales: ${preview.uniqueMaterials.join(', ')}`);
-    console.log(`   📄 Folios (primeros 5): ${preview.uniqueFolios.join(', ')}`);
-    console.log(`   📅 Rango de fechas: ${preview.dateRange.min.toLocaleDateString()} - ${preview.dateRange.max.toLocaleDateString()}`);
+    // Ejecutar el procesamiento unificado
+    await procesarOperacionesUnificadas(seriales, userId, estadoMap, fechaCorte);
     
-    console.log(`\n📑 MUESTRA DE DATOS (primeras ${preview.previewRows.length} filas):`);
-    preview.previewRows.forEach((row, i) => {
-      console.log(`   ${i+1}. Material: ${row.material}`);
-      console.log(`      Serial: ${row.serialNumber}`);
-      console.log(`      Folio: ${row.folio}`);
-      console.log(`      Fecha: ${row.fechaRecibo.toLocaleDateString()}`);
-      console.log('      ─────────────────────────────');
-    });
-    
-    // Verificar materiales conocidos
-    console.log(`\n🔍 ANÁLISIS DE MATERIALES:`);
-    for (const material of preview.uniqueMaterials) {
-      const knownSku = MATERIAL_TO_SKU[material];
-      if (knownSku) {
-        console.log(`   ✅ ${material} → ${knownSku.nombre} (reconocido)`);
-      } else {
-        console.log(`   ⚠️ ${material} → Material no reconocido`);
-      }
-    }
-
   } catch (error) {
-    console.error('❌ Error durante la vista previa:', error);
+    console.error('❌ Error durante el procesamiento:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
-// ------------------ Ejecución Principal ------------------
-
-if (require.main === module) {
-  console.time('⏱ sistema_gestion');
-  menuPrincipal()
-    .then(() => { 
-      console.timeEnd('⏱ sistema_gestion'); 
-      console.log('\n✨ Proceso completado exitosamente');
-      process.exit(0); 
-    })
-    .catch((e) => { 
-      console.error('💥 Error fatal:', e); 
-      process.exit(1); 
+async function procesarOperacionesUnificadas(seriales, userId, estadoMap, fechaCorte) {
+  console.log('\n⏳ Iniciando procesamiento unificado...');
+  
+  // Obtener IDs de todos los estados necesarios
+  const estadoRegistroId = estadoMap['REGISTRO'] || null;
+  const estadoTestInicialId = estadoMap['TEST_INICIAL'] || estadoMap['RETEST'] || null;
+  const estadoEnsambleId = estadoMap['ENSAMBLE'] || estadoMap['RETEST'] || null;
+  const estadoRetestId = estadoMap['RETEST'] || null;
+  const estadoEmpaqueId = estadoMap['EMPAQUE'] || estadoMap['RETEST'] || null;
+  
+  if (!estadoEmpaqueId || !estadoRetestId) {
+    console.error('❌ No se encontraron los estados necesarios para el procesamiento');
+    return;
+  }
+  
+  try {
+    // OPERACIÓN 1: Marcar lotes antiguos con prioridad baja
+    console.log('📅 Identificando módems antiguos en REGISTRO...');
+    
+    const lotesAntiguos = await prisma.modem.findMany({
+      where: {
+        faseActual: 'REGISTRO',
+        createdAt: { lt: fechaCorte }
+      },
+      select: {
+        loteId: true
+      },
+      distinct: ['loteId']
     });
+    
+    const loteIds = lotesAntiguos.map(m => m.loteId);
+    
+    console.log(`🔍 Se encontraron ${loteIds.length} lotes con módems antiguos`);
+    
+    if (loteIds.length > 0) {
+      const actualizados = await prisma.lote.updateMany({
+        where: {
+          id: { in: loteIds }
+        },
+        data: {
+          prioridad: 1,
+          updatedAt: new Date()
+        }
+      });
+      
+      console.log(`✅ Se actualizaron ${actualizados.count} lotes a prioridad baja (1)`);
+    }
+    
+    // OPERACIÓN 2: Procesar SNs del archivo para mover a EMPAQUE
+    console.log('\n🔄 Procesando números de serie para mover a EMPAQUE...');
+    
+    const batchSize = 50;
+    let procesados = 0;
+    let omitidos = 0;
+    let fallidos = 0;
+    
+    // Agrupar los SNs por lotes para mostrar información
+    const lotesSummary = {};
+    
+    for (let i = 0; i < seriales.length; i += batchSize) {
+      const batch = seriales.slice(i, i + batchSize);
+      console.log(`   Procesando lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(seriales.length/batchSize)}...`);
+      
+      for (const sn of batch) {
+        try {
+          // Verificar si el módem existe y está en REGISTRO
+          const modem = await prisma.modem.findFirst({
+            where: {
+              sn: sn,
+              faseActual: 'REGISTRO'
+            },
+            include: {
+              lote: true
+            }
+          });
+          
+          if (modem) {
+            // El módem existe y está en REGISTRO, crear todas las fases secuencialmente
+            await prisma.$transaction(async (tx) => {
+              const fases = ['TEST_INICIAL', 'ENSAMBLE', 'RETEST', 'EMPAQUE'];
+              let lastDateTime = new Date(modem.createdAt);
+              
+              // Crear registros para todas las fases intermedias
+              for (const fase of fases) {
+                // Incrementar tiempo para cada fase (15-30 minutos entre cada una)
+                lastDateTime = new Date(lastDateTime.getTime() + (15 + Math.random() * 15) * 60000);
+                
+                // Obtener el estado ID correspondiente a la fase
+                let estadoId;
+                switch (fase) {
+                  case 'TEST_INICIAL': 
+                    estadoId = estadoTestInicialId; 
+                    break;
+                  case 'ENSAMBLE': 
+                    estadoId = estadoEnsambleId; 
+                    break;
+                  case 'RETEST': 
+                    estadoId = estadoRetestId; 
+                    break;
+                  case 'EMPAQUE': 
+                    estadoId = estadoEmpaqueId; 
+                    break;
+                  default: 
+                    estadoId = estadoRetestId;
+                }
+                
+                // Crear registro para esta fase
+                await tx.registro.create({
+                  data: {
+                    sn: sn,
+                    fase: fase,
+                    estado: 'SN_OK',
+                    userId: userId,
+                    loteId: modem.loteId,
+                    modemId: modem.id,
+                    createdAt: lastDateTime
+                  }
+                });
+                
+                // Actualizar el estado del módem
+                await tx.modem.update({
+                  where: { id: modem.id },
+                  data: {
+                    faseActual: fase,
+                    estadoActualId: estadoId,
+                    updatedAt: lastDateTime
+                  }
+                });
+              }
+            });
+            
+            // Agregar a resumen por lote
+            if (!lotesSummary[modem.loteId]) {
+              lotesSummary[modem.loteId] = {
+                numero: modem.lote.numero,
+                count: 0
+              };
+            }
+            lotesSummary[modem.loteId].count++;
+            
+            procesados++;
+          } else {
+            // El módem no existe o no está en REGISTRO, omitirlo
+            omitidos++;
+          }
+        } catch (error) {
+          fallidos++;
+          console.error(`   ❌ Error al procesar SN ${sn}: ${error.message}`);
+        }
+      }
+      
+      const progreso = Math.min(i + batchSize, seriales.length);
+      console.log(`   ✅ Progreso: ${progreso}/${seriales.length} (${Math.round(progreso/seriales.length*100)}%)`);
+    }
+    
+    console.log('\n🎉 ¡Procesamiento unificado completado!');
+    console.log('📊 Resumen:');
+    console.log(`   ✅ Módems procesados completamente: ${procesados}`);
+    console.log(`   ⚠️ Módems omitidos (no encontrados o no en REGISTRO): ${omitidos}`);
+    console.log(`   ❌ Errores durante el procesamiento: ${fallidos}`);
+    
+    // Mostrar resumen por lote
+    if (Object.keys(lotesSummary).length > 0) {
+      console.log('\n📦 Módems procesados por lote:');
+      for (const [loteId, info] of Object.entries(lotesSummary)) {
+        console.log(`   Lote ${info.numero}: ${info.count} módems procesados`);
+      }
+    }
+    
+    // Obtener resumen por estado actual
+    const resumenEstados = await prisma.modem.groupBy({
+      by: ['faseActual'],
+      _count: true
+    });
+    
+    console.log('\n📊 Estado actual del sistema:');
+    for (const estado of resumenEstados) {
+      console.log(`   ${estado.faseActual}: ${estado._count} módems`);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error en el procesamiento unificado:', error);
+    throw error;
+  }
 }
 
+// ------------------ Menú Principal ------------------
+
+async function menuPrincipal() {
+  try {
+    await loadInquirer();
+    
+    console.log('\n🌟 SISTEMA DE GESTIÓN DE MÓDEMS 🌟\n');
+    
+    const { opcion } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'opcion',
+        message: 'Selecciona una opción:',
+        choices: [
+          { name: '📥📦 Importar ENTRADA y SALIDA desde CSV', value: 'entrada_salida' },
+          { name: '📥 Importar módems desde archivo CSV (original)', value: 'importar' },
+          { name: '� Procesar múltiples archivos CSV', value: 'multiple_csv' }, // Nueva opción
+          { name: '�📦 Procesar módems a EMPAQUE', value: 'empaque' },
+          { name: '🔄 Procesar REGISTRO→EMPAQUE + Marcar antiguos', value: 'registro_empaque' },
+          { name: '🔄 Cambio de fase desde CSV', value: 'cambio_fase' }, // Nueva opción
+          { name: '�️ Borrar lote completo', value: 'borrar_lote' }, // Nueva opción
+          { name: '�🔍 Vista previa de archivo', value: 'preview' },
+          { name: '❌ Salir', value: 'salir' }
+        ]
+      }
+    ]);
+    
+    switch (opcion) {
+      case 'entrada_salida':
+        await importarEntradaYSalida();
+        await menuPrincipal();
+        break;
+      case 'importar':
+        await importInteractive();
+        await menuPrincipal();
+        break;
+      case 'multiple_csv': // Nuevo caso
+        await procesarMultiplesCSV(loadInquirer, prisma);
+        await menuPrincipal();
+        break;
+      case 'empaque':
+        await procesarModemsAEmpaque();
+        await menuPrincipal();
+        break;
+      case 'registro_empaque':
+        await procesarRegistroAEmpaque();
+        await menuPrincipal();
+        break;
+      case 'cambio_fase': // Nuevo caso
+        await cambiarFaseDesdeCsv(loadInquirer, prisma);
+        await menuPrincipal();
+        break;
+      case 'borrar_lote': // Nuevo caso
+        await borrarLoteCompleto(prisma, inquirer);
+        await menuPrincipal();
+        break;
+      case 'preview':
+        await previewFileOnly();
+        await menuPrincipal();
+        break;
+      case 'salir':
+        console.log('👋 ¡Hasta luego!');
+        break;
+    }
+    
+  } catch (error) {
+    console.error('❌ Error en el menú principal:', error);
+  }
+}
+
+// Si el script se ejecuta directamente, iniciar el menú principal
+if (require.main === module) {
+  menuPrincipal().catch(console.error);
+}
+
+// Actualizar exports para incluir las nuevas funciones
 module.exports = { 
   importInteractive, 
   procesarImportacion, 
   parseRowsFromContent, 
   readTextSmart,
   procesarModemsAEmpaque,
+  procesarRegistroAEmpaque,
   menuPrincipal,
   previewFileOnly,
   importarEntradaYSalida,
-  procesarImportacionEntradaYSalida
+  procesarImportacionEntradaYSalida,
+  
+  // Nuevas funciones
+  cambiarFaseDesdeCsv,
+  procesarMultiplesCSV,
+  procesarSNsEnLotes,
+  getEstadoWithCache,
+  createBatchRegistros,
+  borrarLoteCompleto
 };

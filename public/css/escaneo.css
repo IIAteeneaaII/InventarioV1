@@ -146,3 +146,19 @@
   display: none; /* oculta al cargar la página */
 }
 
+/* === NUEVO: soporte visual para Código y Descripción === */
+.codigo-diagnostico-group,
+.descripcion-codigo-group {
+  display: none; /* se muestran vía JS cuando aplique */
+}
+
+.descripcion-codigo-group input[readonly] {
+  background: #f5f7f9;
+  border: 1px solid #dbe2e8;
+  color: #333;
+}
+
+/* Botón SCRAP ON/OFF (clases ya usadas por el JS) */
+.btn-toggle.is-on { background-color: #4CAF50; color: #fff; }
+.btn-toggle.is-off { background-color: #f44336; color: #fff; }
+

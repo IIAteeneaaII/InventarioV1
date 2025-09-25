@@ -4,122 +4,278 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Inventario Cosmético</title>
-
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
+  <style>
+    .loading-spinner {
+      display: none;
+    }
+    .error-state {
+      color: #dc3545;
+      font-style: italic;
+    }
+    .success-update {
+      background-color: #d4edda !important;
+      transition: background-color 0.5s ease;
+    }
+    .btn-group-actions {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+    .btn-sm-custom {
+      font-size: 0.8rem;
+      padding: 0.25rem 0.5rem;
+    }
+  </style>
 </head>
 
 <body>
-  <!-- Header: título a la izquierda, usuario e iconos a la derecha -->
-
+  <!-- Header -->
   <div class="app-header d-flex align-items-center justify-content-between px-4 py-3" style="background: #365a66;">
     <div class="d-flex align-items-center">
-      <span style="font-size:2em; font-weight:bold; color:#fff;">Inventario de Insumos de Cosmética</span>
+      <span style="font-size:2em; font-weight:bold; color:#fff;">
+        Inventario de Insumos de Cosmética RAM <span id="ram-number">--</span>
+      </span>
     </div>
     <div class="d-flex align-items-center gap-2">
-      <img src="/img/usuario.webp" alt="Usuario" class="user-icon" style="width: 40px; height: 40px; border-radius: 50%; background: #fff; border: 2px solid #fff;">
-      <span class="username ms-2" style="font-size: 1.2em; font-weight: bold; color: #fff;">
-        <%= user?.nombre || user?.userName || 'Usuario' %>
+      <img id="user-avatar" src="/img/usuario.webp" alt="Usuario" class="user-icon" 
+           style="width: 40px; height: 40px; border-radius: 50%; background: #fff; border: 2px solid #fff;"
+           onerror="this.style.display='none';">
+      <span class="username ms-2" style="font-size: 1.2em; font-weight: bold; color: #fff;" id="username">
+        Usuario
       </span>
-      <button id="logout-icon" class="btn btn-link p-0 ms-3" title="Cerrar sesión" style="color: #fff; font-size: 1.5em;" onclick="cerrarSesion()">
-  <i class="fas fa-right-from-bracket"></i>
-</button>
+      <button id="logout-icon" class="btn btn-link p-0 ms-3" title="Cerrar sesión" 
+              style="color: #fff; font-size: 1.5em;" onclick="cerrarSesion()" 
+              aria-label="Cerrar sesión">
+        <i class="fas fa-right-from-bracket"></i>
+      </button>
     </div>
   </div>
 
-  <div class="admin-container" style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); max-width: 1200px; margin: 40px auto;">
-    <div class="h2-wrapper">
-      <h2 style="text-align: center; margin-bottom: 24px;">Inventario de Insumos de Cosmética</h2>
-      <div class="alert alert-info">
-        <i class="fas fa-info-circle"></i> Todos los SKUs disponibles se muestran automáticamente. Utilice los botones de "Entrada" para registrar stock inicial.
+  <div class="admin-container" style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); max-width: 1400px; margin: 40px auto;">
+    
+    <!-- Loading state -->
+    <div id="loading-state" class="text-center loading-spinner">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Cargando...</span>
       </div>
+      <p class="mt-2">Cargando inventario...</p>
     </div>
-    <div class="card">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-bordered table-striped table-hover">
-            <thead class="thead-dark">
-              <tr>
-                <th>Nombre SKU</th>
-                <th>Capuchones</th>
-                <th>Bases</th>
-                <th>Tapas</th>
-                <th>Total General</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% if (Object.keys(inventario).length === 0) { %>
-                <tr>
-                  <td colspan="6" class="text-center">No hay datos de inventario disponibles</td>
-                </tr>
-              <% } else { %>
-                <% Object.values(inventario).forEach(item => { 
-                     const total = item.CAPUCHONES + item.BASES + item.TAPAS;
-                %>
-                  <tr>
-                    <td><%= item.nombre || item.skuNombre || item.skuItem %></td>
-                    <td id="cantidad-<%= item.skuId %>-CAPUCHONES"><%= item.CAPUCHONES %></td>
-                    <td id="cantidad-<%= item.skuId %>-BASES"><%= item.BASES %></td>
-                    <td id="cantidad-<%= item.skuId %>-TAPAS"><%= item.TAPAS %></td>
-                    <td id="total-<%= item.skuId %>"><%= total %></td>
-                    <td>
-                      <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#movimientoModal"
-                              data-sku-id="<%= item.skuId %>" data-tipo-movimiento="ENTRADA"
-                              data-sku-nombre="<%= item.nombre || item.skuNombre || item.skuItem %>">
-                        <i class="fas fa-plus"></i> Entrada
-                      </button>
-                      <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#movimientoModal"
-                              data-sku-id="<%= item.skuId %>" data-tipo-movimiento="SALIDA"
-                              data-sku-nombre="<%= item.nombre || item.skuNombre || item.skuItem %>"
-                              <%= total === 0 ? 'disabled' : '' %>>
-                        <i class="fas fa-minus"></i> Salida
-                      </button>
-                    </td>
-                  </tr>
-                <% }) %>
-              <% } %>
-            </tbody>
-          </table>
+
+    <!-- Error state -->
+    <div id="error-state" class="alert alert-danger" style="display: none;">
+      <i class="fas fa-exclamation-triangle"></i>
+      <span id="error-message">Ha ocurrido un error al cargar los datos.</span>
+      <button class="btn btn-outline-danger btn-sm ms-2" onclick="recargarDatos()">
+        <i class="fas fa-refresh"></i> Reintentar
+      </button>
+    </div>
+
+    <!-- Tabs de navegación -->
+    <ul class="nav nav-tabs" id="inventarioTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="inventario-tab" data-bs-toggle="tab" 
+                data-bs-target="#inventario" type="button" role="tab" 
+                aria-controls="inventario" aria-selected="true">
+          <i class="fas fa-boxes"></i> Inventario
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link position-relative" id="transferencias-tab" data-bs-toggle="tab" 
+                data-bs-target="#transferencias" type="button" role="tab" 
+                aria-controls="transferencias" aria-selected="false">
+          <i class="fas fa-exchange-alt"></i> Transferencias
+          <span id="badge-transferencias" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" 
+                style="display: none;">
+            0
+          </span>
+        </button>
+      </li>
+    </ul>
+
+    <!-- Contenido de las tabs -->
+    <div class="tab-content" id="inventarioTabsContent">
+      
+      <!-- Tab de Inventario -->
+      <div class="tab-pane fade show active" id="inventario" role="tabpanel" aria-labelledby="inventario-tab">
+        <div class="mt-4">
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> 
+            Use "Envío" para agregar stock (entrada). Use "Recibo" para quitar stock (salida).
+            Use "Pendientes" para ver transferencias entre RAMs.
+          </div>
+          
+          <div class="card">
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-bordered table-striped table-hover" id="inventario-table">
+                  <thead class="table-dark">
+                    <tr>
+                      <th scope="col">Nombre SKU</th>
+                      <th scope="col">Capuchones</th>
+                      <th scope="col">Bases</th>
+                      <th scope="col">Tapas</th>
+                      <th scope="col">Total General</th>
+                      <th scope="col">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="inventario-tbody">
+                    <tr>
+                      <td colspan="6" class="text-center">Cargando datos...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab de Transferencias -->
+      <div class="tab-pane fade" id="transferencias" role="tabpanel" aria-labelledby="transferencias-tab">
+        <div class="mt-4">
+          <div class="row">
+            
+            <!-- Transferencias por Recibir -->
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header bg-success text-white">
+                  <h5 class="mb-0"><i class="fas fa-inbox"></i> Por Recibir</h5>
+                </div>
+                <div class="card-body" id="transferencias-recibo">
+                  <div class="text-center text-muted">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                      <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2">Cargando transferencias...</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Transferencias Enviadas -->
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header bg-warning text-dark">
+                  <h5 class="mb-0"><i class="fas fa-clock"></i> Enviadas (Pendientes)</h5>
+                </div>
+                <div class="card-body" id="transferencias-enviadas">
+                  <div class="text-center text-muted">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                      <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2">Cargando transferencias...</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Modal -->
-  <div class="modal fade" id="movimientoModal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
+  <!-- Modal de Movimiento (Entrada/Salida) -->
+  <div class="modal fade" id="movimientoModal" tabindex="-1" aria-labelledby="movimientoModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-        <div class="modal-header" id="modalHeader">
-          <h5 class="modal-title" id="modalTitle">Registrar Movimiento</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-header" id="movimientoModalHeader">
+          <h5 class="modal-title" id="movimientoModalTitle">Registrar Movimiento</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
         <div class="modal-body">
-          <form id="movimientoForm">
-            <input type="hidden" id="skuId" name="skuId"/>
+          <form id="movimientoForm" novalidate>
+            <input type="hidden" id="movimientoSkuId" name="skuId"/>
             <input type="hidden" id="tipoMovimiento" name="tipoMovimiento"/>
             <div class="mb-3">
               <label class="form-label">SKU:</label>
-              <p class="form-control-plaintext fw-bold mb-2" id="nombreSkuModal"></p>
+              <p class="form-control-plaintext fw-bold mb-2" id="movimientoNombreSkuModal">-</p>
             </div>
             <div class="mb-3">
-              <label for="tipoInsumo" class="form-label">Insumo</label>
-              <select class="form-select" id="tipoInsumo" name="tipoInsumo" required>
+              <label for="movimientoTipoInsumo" class="form-label">Insumo <span class="text-danger">*</span></label>
+              <select class="form-select" id="movimientoTipoInsumo" name="tipoInsumo" required>
+                <option value="">Seleccione un insumo</option>
                 <option value="CAPUCHONES">Capuchones</option>
                 <option value="BASES">Bases</option>
                 <option value="TAPAS">Tapas</option>
               </select>
+              <div class="invalid-feedback">
+                Debe seleccionar un tipo de insumo.
+              </div>
             </div>
             <div class="mb-3">
-              <label for="cantidad" class="form-label">Cantidad</label>
-              <input type="number" class="form-control" id="cantidad" name="cantidad" min="1" required/>
+              <label for="movimientoCantidad" class="form-label">Cantidad <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="movimientoCantidad" name="cantidad" min="1" required/>
+              <div class="invalid-feedback">
+                Debe ingresar una cantidad válida.
+              </div>
+              <div class="form-text" id="movimientoInfo">
+                Disponible para recibo: <span id="movimiento-cantidad-disponible">--</span>
+              </div>
             </div>
           </form>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" form="movimientoForm" class="btn btn-primary">Guardar</button>
+          <button type="submit" form="movimientoForm" class="btn btn-primary" id="btn-movimiento">
+            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+            Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Envío (Transferencias) -->
+  <div class="modal fade" id="envioModal" tabindex="-1" aria-labelledby="envioModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="envioModalLabel">Registrar Envío de Insumos</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <form id="envioForm" novalidate>
+            <input type="hidden" id="envioSkuId" name="skuId"/>
+            <div class="mb-3">
+              <label class="form-label">SKU:</label>
+              <p class="form-control-plaintext fw-bold mb-2" id="envioNombreSkuModal">-</p>
+            </div>
+            <div class="mb-3">
+              <label for="envioTipoInsumo" class="form-label">Insumo <span class="text-danger">*</span></label>
+              <select class="form-select" id="envioTipoInsumo" name="tipoInsumo" required>
+                <option value="">Seleccione un insumo</option>
+                <option value="CAPUCHONES">Capuchones</option>
+                <option value="BASES">Bases</option>
+                <option value="TAPAS">Tapas</option>
+              </select>
+              <div class="invalid-feedback">
+                Debe seleccionar un tipo de insumo.
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="envioCantidad" class="form-label">Cantidad <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="envioCantidad" name="cantidad" min="1" required/>
+              <div class="invalid-feedback">
+                Debe ingresar una cantidad válida.
+              </div>
+              <div class="form-text">
+                Disponible: <span id="envio-cantidad-disponible">--</span>
+              </div>
+            </div>
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i> El envío será descontado de su inventario y estará pendiente hasta que el destinatario confirme el recibo.
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" form="envioForm" class="btn btn-primary" id="btn-enviar">
+            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+            Enviar
+          </button>
         </div>
       </div>
     </div>
@@ -127,106 +283,708 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-</script>
-<script src="/js/cerrarsesion.js"></script>
-<script>
-let movimientoModal;
-document.addEventListener('DOMContentLoaded', function() {
-  movimientoModal = new bootstrap.Modal(document.getElementById('movimientoModal'));
 
-  // Botones de entrada/salida
-  document.querySelectorAll('button[data-bs-target="#movimientoModal"]').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const skuId = this.getAttribute('data-sku-id');
-      const tipoMovimiento = this.getAttribute('data-tipo-movimiento');
-      const skuNombre = this.getAttribute('data-sku-nombre');
-      document.getElementById('skuId').value = skuId;
-      document.getElementById('tipoMovimiento').value = tipoMovimiento;
-      document.getElementById('nombreSkuModal').textContent = skuNombre;
-      // Cambiar título y color del modal
-      const modalTitle = document.getElementById('modalTitle');
-      const modalHeader = document.getElementById('modalHeader');
-      if (tipoMovimiento === 'ENTRADA') {
-        modalTitle.textContent = 'Registrar Entrada de Insumos';
-        modalHeader.classList.remove('bg-danger', 'text-white');
-        modalHeader.classList.add('bg-success', 'text-white');
-      } else {
-        modalTitle.textContent = 'Registrar Salida de Insumos';
-        modalHeader.classList.remove('bg-success', 'text-white');
-        modalHeader.classList.add('bg-danger', 'text-white');
-      }
-    });
-  });
-
-  // Envío del formulario por AJAX
-  document.getElementById('movimientoForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const form = e.target;
-    if (!form.checkValidity()) {
-      form.reportValidity();
-      return;
-    }
-    const formData = {
-      skuId: document.getElementById('skuId').value,
-      tipoInsumo: document.getElementById('tipoInsumo').value,
-      tipoMovimiento: document.getElementById('tipoMovimiento').value,
-      cantidad: document.getElementById('cantidad').value,
+  <script>
+    // Estado global de la aplicación
+    const AppState = {
+      inventario: {},
+      transferenciasRecibo: [],
+      transferenciasEnviadas: [],
+      user: null,
+      ramNumber: null,
+      loading: false
     };
-    try {
-      const response = await fetch('/api/cosmetica/movimiento', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      const result = await response.json();
-      if (response.ok && result.success) {
-        Swal.fire({
-          icon: 'success',
-          title: '¡Éxito!',
-          text: result.message,
-          timer: 1500,
-          showConfirmButton: false
-        });
-        // Actualizar la tabla
-        const { skuId, tipoInsumo } = formData;
-        const nuevaCantidad = result.data.cantidad;
-        document.getElementById(`cantidad-${skuId}-${tipoInsumo}`).textContent = nuevaCantidad;
-        // Recalcular total
-        const capuchones = parseInt(document.getElementById(`cantidad-${skuId}-CAPUCHONES`).textContent);
-        const bases = parseInt(document.getElementById(`cantidad-${skuId}-BASES`).textContent);
-        const tapas = parseInt(document.getElementById(`cantidad-${skuId}-TAPAS`).textContent);
-        const total = capuchones + bases + tapas;
-        document.getElementById(`total-${skuId}`).textContent = total;
-        
-        // Actualizar estado del botón de salida
-        const salidaBtn = document.querySelector(`button[data-sku-id="${skuId}"][data-tipo-movimiento="SALIDA"]`);
-        if (salidaBtn) {
-          if (total === 0) {
-            salidaBtn.setAttribute('disabled', 'disabled');
-          } else {
-            salidaBtn.removeAttribute('disabled');
+
+    let movimientoModal, envioModal;
+
+    // Utilidades
+    const Utils = {
+      formatDate: (dateString) => {
+        try {
+          return new Date(dateString).toLocaleDateString('es-ES');
+        } catch {
+          return 'Fecha inválida';
+        }
+      },
+
+      validateForm: (form) => {
+        form.classList.add('was-validated');
+        return form.checkValidity();
+      },
+
+      showLoading: (element, show = true) => {
+        const spinner = element.querySelector('.spinner-border');
+        if (spinner) {
+          spinner.style.display = show ? 'inline-block' : 'none';
+        }
+      },
+
+      updateElementText: (id, text, addSuccessClass = false) => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.textContent = text;
+          if (addSuccessClass) {
+            element.classList.add('success-update');
+            setTimeout(() => element.classList.remove('success-update'), 2000);
           }
         }
-        
-        movimientoModal.hide();
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: result.message || 'Ocurrió un error al registrar el movimiento.'
-        });
+      },
+
+      safeGetProperty: (obj, path, defaultValue = '') => {
+        try {
+          return path.split('.').reduce((current, key) => current?.[key], obj) || defaultValue;
+        } catch {
+          return defaultValue;
+        }
       }
-    } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error de Conexión',
-        text: 'No se pudo conectar con el servidor.'
+    };
+
+    // API calls
+    const API = {
+      async request(url, options = {}) {
+        try {
+          const response = await fetch(url, {
+            headers: {
+              'Content-Type': 'application/json',
+              ...options.headers
+            },
+            ...options
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          return await response.json();
+        } catch (error) {
+          console.error('API Error:', error);
+          throw error;
+        }
+      },
+
+      async registrarMovimiento(data) {
+        return this.request('/api/cosmetica/movimiento', {
+          method: 'POST',
+          body: JSON.stringify(data)
+        });
+      },
+
+      async enviarInsumos(data) {
+        return this.request('/api/cosmetica/envio', {
+          method: 'POST',
+          body: JSON.stringify(data)
+        });
+      },
+
+      async confirmarRecibo(transferenciaId) {
+        return this.request('/api/cosmetica/recibo', {
+          method: 'POST',
+          body: JSON.stringify({ transferenciaId })
+        });
+      },
+
+      async cargarDatos() {
+        // Para pruebas - datos de ejemplo
+        // En producción, esto debería hacer una llamada real a tu API
+        return {
+          inventario: {
+            'sku1': {
+              skuId: 'sku1',
+              nombre: 'Labial Rojo Intenso',
+              CAPUCHONES: 150,
+              BASES: 200,
+              TAPAS: 100
+            },
+            'sku2': {
+              skuId: 'sku2',
+              nombre: 'Base Líquida Natural',
+              CAPUCHONES: 75,
+              BASES: 120,
+              TAPAS: 90
+            },
+            'sku3': {
+              skuId: 'sku3',
+              nombre: 'Gloss Transparente',
+              CAPUCHONES: 0,
+              BASES: 50,
+              TAPAS: 25
+            }
+          },
+          transferenciasRecibo: [
+            {
+              id: 1,
+              sku: { nombre: 'Labial Rojo Intenso' },
+              tipoInsumo: 'CAPUCHONES',
+              cantidad: 50,
+              fechaEnvio: new Date().toISOString(),
+              remitente: { nombre: 'RAM 002' }
+            }
+          ],
+          transferenciasEnviadas: [
+            {
+              id: 2,
+              sku: { nombre: 'Base Líquida Natural' },
+              tipoInsumo: 'BASES',
+              cantidad: 30,
+              fechaEnvio: new Date().toISOString(),
+              destinatario: { nombre: 'RAM 003' }
+            }
+          ],
+          user: { nombre: 'Usuario Demo' },
+          ramNumber: '001'
+        };
+      }
+    };
+
+    // Renderizado
+    const Renderer = {
+      renderInventario() {
+        const tbody = document.getElementById('inventario-tbody');
+        if (!tbody) return;
+
+        if (Object.keys(AppState.inventario).length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" class="text-center text-muted">
+                <i class="fas fa-box-open fa-2x mb-2 d-block"></i>
+                No hay datos de inventario disponibles
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = Object.values(AppState.inventario).map(item => {
+          const nombre = Utils.safeGetProperty(item, 'nombre') || 
+                        Utils.safeGetProperty(item, 'skuNombre') || 
+                        Utils.safeGetProperty(item, 'skuItem') || 'SKU sin nombre';
+          const capuchones = parseInt(item.CAPUCHONES) || 0;
+          const bases = parseInt(item.BASES) || 0;
+          const tapas = parseInt(item.TAPAS) || 0;
+          const total = capuchones + bases + tapas;
+
+          return `
+            <tr>
+              <td>${nombre}</td>
+              <td id="cantidad-${item.skuId}-CAPUCHONES">${capuchones}</td>
+              <td id="cantidad-${item.skuId}-BASES">${bases}</td>
+              <td id="cantidad-${item.skuId}-TAPAS">${tapas}</td>
+              <td id="total-${item.skuId}">${total}</td>
+              <td>
+                <div class="btn-group-actions">
+                  <!-- Botón Envío (actúa como Entrada - añadir stock) -->
+                  <button class="btn btn-success btn-sm-custom me-1" 
+                          data-bs-toggle="modal" data-bs-target="#movimientoModal"
+                          data-sku-id="${item.skuId}"
+                          data-tipo-movimiento="ENTRADA"
+                          data-sku-nombre="${nombre}"
+                          aria-label="Envío (entrada) de ${nombre}">
+                    <i class="fas fa-plus"></i> Envío
+                  </button>
+                  <!-- Botón Recibo (actúa como Salida - quitar stock) -->
+                  <button class="btn btn-danger btn-sm-custom me-1" 
+                          data-bs-toggle="modal" data-bs-target="#movimientoModal"
+                          data-sku-id="${item.skuId}"
+                          data-tipo-movimiento="SALIDA"
+                          data-sku-nombre="${nombre}"
+                          ${total === 0 ? 'disabled' : ''}
+                          aria-label="Recibo (salida) de ${nombre}">
+                    <i class="fas fa-minus"></i> Recibo
+                  </button>
+                  <!-- Botón para ver transferencias pendientes -->
+                  <button class="btn btn-info btn-sm-custom" 
+                          onclick="mostrarTransferenciasPendientes('${item.skuId}')"
+                          aria-label="Ver transferencias de ${nombre}">
+                    <i class="fas fa-exchange-alt"></i> Pendientes
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      },
+
+      renderTransferenciasRecibo() {
+        const container = document.getElementById('transferencias-recibo');
+        if (!container) return;
+
+        if (AppState.transferenciasRecibo.length === 0) {
+          container.innerHTML = `
+            <div class="text-center text-muted">
+              <i class="fas fa-inbox fa-3x mb-3"></i>
+              <p>No hay transferencias pendientes de recibo</p>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = `
+          <div class="list-group">
+            ${AppState.transferenciasRecibo.map(transfer => `
+              <div class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                  <h6 class="mb-1">${Utils.safeGetProperty(transfer, 'sku.nombre', 'SKU sin nombre')}</h6>
+                  <small class="text-muted">${Utils.formatDate(transfer.fechaEnvio)}</small>
+                </div>
+                <p class="mb-1">
+                  <strong>${transfer.tipoInsumo}:</strong> ${transfer.cantidad} unidades
+                </p>
+                <small class="text-muted">De: ${Utils.safeGetProperty(transfer, 'remitente.nombre', 'Remitente desconocido')}</small>
+                <div class="mt-2">
+                  <button class="btn btn-success btn-sm" onclick="confirmarRecibo(${transfer.id})"
+                          aria-label="Confirmar recibo de ${transfer.tipoInsumo}">
+                    <i class="fas fa-check"></i> Confirmar Recibo
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      },
+
+      renderTransferenciasEnviadas() {
+        const container = document.getElementById('transferencias-enviadas');
+        if (!container) return;
+
+        if (AppState.transferenciasEnviadas.length === 0) {
+          container.innerHTML = `
+            <div class="text-center text-muted">
+              <i class="fas fa-clock fa-3x mb-3"></i>
+              <p>No hay transferencias enviadas pendientes</p>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = `
+          <div class="list-group">
+            ${AppState.transferenciasEnviadas.map(transfer => `
+              <div class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                  <h6 class="mb-1">${Utils.safeGetProperty(transfer, 'sku.nombre', 'SKU sin nombre')}</h6>
+                  <small class="text-muted">${Utils.formatDate(transfer.fechaEnvio)}</small>
+                </div>
+                <p class="mb-1">
+                  <strong>${transfer.tipoInsumo}:</strong> ${transfer.cantidad} unidades
+                </p>
+                <small class="text-muted">Para: ${Utils.safeGetProperty(transfer, 'destinatario.nombre', 'Destinatario desconocido')}</small>
+                <div class="mt-2">
+                  <span class="badge bg-warning text-dark">
+                    <i class="fas fa-clock"></i> Pendiente de confirmación
+                  </span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      },
+
+      updateBadge() {
+        const badge = document.getElementById('badge-transferencias');
+        if (!badge) return;
+
+        const count = AppState.transferenciasRecibo.length;
+        if (count > 0) {
+          badge.textContent = count;
+          badge.style.display = 'inline-block';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+    };
+
+    // Inicialización
+    document.addEventListener('DOMContentLoaded', async function() {
+      try {
+        movimientoModal = new bootstrap.Modal(document.getElementById('movimientoModal'));
+        envioModal = new bootstrap.Modal(document.getElementById('envioModal'));
+        
+        await cargarDatosIniciales();
+        configurarEventListeners();
+        
+      } catch (error) {
+        console.error('Error en inicialización:', error);
+        mostrarError('Error al cargar la aplicación');
+      }
+    });
+
+    async function cargarDatosIniciales() {
+      mostrarCarga(true);
+      
+      try {
+        const datos = await API.cargarDatos();
+        
+        AppState.inventario = datos.inventario || {};
+        AppState.transferenciasRecibo = datos.transferenciasRecibo || [];
+        AppState.transferenciasEnviadas = datos.transferenciasEnviadas || [];
+        AppState.user = datos.user;
+        AppState.ramNumber = datos.ramNumber;
+
+        // Actualizar UI
+        Utils.updateElementText('ram-number', AppState.ramNumber || '--');
+        Utils.updateElementText('username', Utils.safeGetProperty(AppState.user, 'nombre', 'Usuario'));
+
+        Renderer.renderInventario();
+        Renderer.renderTransferenciasRecibo();
+        Renderer.renderTransferenciasEnviadas();
+        Renderer.updateBadge();
+
+        ocultarError();
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+        mostrarError('Error al cargar los datos del inventario');
+      } finally {
+        mostrarCarga(false);
+      }
+    }
+
+    function configurarEventListeners() {
+      // Modal de movimiento (entrada/salida)
+      document.addEventListener('click', function(e) {
+        const button = e.target.closest('button[data-bs-target="#movimientoModal"]');
+        if (button) {
+          const skuId = button.getAttribute('data-sku-id');
+          const skuNombre = button.getAttribute('data-sku-nombre');
+          const tipoMovimiento = button.getAttribute('data-tipo-movimiento');
+          
+          document.getElementById('movimientoSkuId').value = skuId;
+          document.getElementById('tipoMovimiento').value = tipoMovimiento;
+          document.getElementById('movimientoNombreSkuModal').textContent = skuNombre;
+          
+          // Cambiar título y color del modal
+          const modalTitle = document.getElementById('movimientoModalTitle');
+          const modalHeader = document.getElementById('movimientoModalHeader');
+          const infoDiv = document.getElementById('movimientoInfo');
+          
+          if (tipoMovimiento === 'ENTRADA') {
+            modalTitle.textContent = 'Registrar Envío de Insumos';
+            modalHeader.className = 'modal-header bg-success text-white';
+            infoDiv.style.display = 'none';
+          } else {
+            modalTitle.textContent = 'Registrar Recibo de Insumos';
+            modalHeader.className = 'modal-header bg-danger text-white';
+            infoDiv.style.display = 'block';
+          }
+          
+          // Reset form
+          const form = document.getElementById('movimientoForm');
+          form.reset();
+          form.classList.remove('was-validated');
+          
+          // Actualizar cantidad disponible cuando se seleccione el tipo (solo para salidas)
+          const tipoSelect = document.getElementById('movimientoTipoInsumo');
+          tipoSelect.addEventListener('change', function() {
+            if (tipoMovimiento === 'SALIDA') {
+              actualizarCantidadDisponible(skuId, this.value, 'movimiento');
+            }
+          });
+        }
+      });
+
+      // Modal de envío (transferencias)
+      document.addEventListener('click', function(e) {
+        const button = e.target.closest('button[data-bs-target="#envioModal"]');
+        if (button) {
+          const skuId = button.getAttribute('data-sku-id');
+          const skuNombre = button.getAttribute('data-sku-nombre');
+          
+          document.getElementById('envioSkuId').value = skuId;
+          document.getElementById('envioNombreSkuModal').textContent = skuNombre;
+          
+          // Reset form
+          const form = document.getElementById('envioForm');
+          form.reset();
+          form.classList.remove('was-validated');
+          
+          // Actualizar cantidad disponible cuando se seleccione el tipo
+          const tipoSelect = document.getElementById('envioTipoInsumo');
+          tipoSelect.addEventListener('change', function() {
+            actualizarCantidadDisponible(skuId, this.value, 'envio');
+          });
+        }
+      });
+
+      // Envío del formulario de movimiento
+      document.getElementById('movimientoForm').addEventListener('submit', procesarMovimiento);
+      
+      // Envío del formulario de transferencia
+      document.getElementById('envioForm').addEventListener('submit', procesarEnvio);
+
+      // Validación en tiempo real para movimientos
+      const movimientoCantidadInput = document.getElementById('movimientoCantidad');
+      movimientoCantidadInput.addEventListener('input', function() {
+        const tipoMovimiento = document.getElementById('tipoMovimiento').value;
+        if (tipoMovimiento === 'SALIDA') {
+          const max = parseInt(document.getElementById('movimiento-cantidad-disponible').textContent);
+          if (this.value > max) {
+            this.setCustomValidity(`La cantidad no puede ser mayor a ${max}`);
+          } else {
+            this.setCustomValidity('');
+          }
+        }
+      });
+
+      // Validación en tiempo real para envíos
+      const envioCantidadInput = document.getElementById('envioCantidad');
+      envioCantidadInput.addEventListener('input', function() {
+        const max = parseInt(document.getElementById('envio-cantidad-disponible').textContent);
+        if (this.value > max) {
+          this.setCustomValidity(`La cantidad no puede ser mayor a ${max}`);
+        } else {
+          this.setCustomValidity('');
+        }
       });
     }
-  });
-});
-  
-</script>
 
+    function actualizarCantidadDisponible(skuId, tipoInsumo, modalType) {
+      const item = AppState.inventario[skuId];
+      if (item && tipoInsumo) {
+        const disponible = item[tipoInsumo] || 0;
+        const elementId = modalType === 'movimiento' ? 'movimiento-cantidad-disponible' : 'envio-cantidad-disponible';
+        Utils.updateElementText(elementId, disponible);
+        
+        const inputId = modalType === 'movimiento' ? 'movimientoCantidad' : 'envioCantidad';
+        const cantidadInput = document.getElementById(inputId);
+        cantidadInput.setAttribute('max', disponible);
+      }
+    }
+
+    async function procesarMovimiento(e) {
+      e.preventDefault();
+      
+      const form = e.target;
+      if (!Utils.validateForm(form)) {
+        return;
+      }
+
+      const btnMovimiento = document.getElementById('btn-movimiento');
+      const spinner = btnMovimiento.querySelector('.spinner-border');
+      
+      // Estado de carga
+      btnMovimiento.disabled = true;
+      spinner.classList.remove('d-none');
+
+      try {
+        const formData = {
+          skuId: document.getElementById('movimientoSkuId').value,
+          tipoInsumo: document.getElementById('movimientoTipoInsumo').value,
+          tipoMovimiento: document.getElementById('tipoMovimiento').value,
+          cantidad: parseInt(document.getElementById('movimientoCantidad').value)
+        };
+
+        const result = await API.registrarMovimiento(formData);
+        
+        if (result.success) {
+          await Swal.fire({
+            icon: 'success',
+            title: '¡Movimiento Registrado!',
+            text: result.message,
+            timer: 2000,
+            showConfirmButton: false
+          });
+          
+          // Actualizar estado local
+          actualizarInventarioLocal(formData, result.data);
+          movimientoModal.hide();
+          
+        } else {
+          throw new Error(result.message || 'Error al procesar movimiento');
+        }
+        
+      } catch (error) {
+        console.error('Error en movimiento:', error);
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error.message || 'Ocurrió un error al registrar el movimiento.'
+        });
+      } finally {
+        btnMovimiento.disabled = false;
+        spinner.classList.add('d-none');
+      }
+    }
+
+    async function procesarEnvio(e) {
+      e.preventDefault();
+      
+      const form = e.target;
+      if (!Utils.validateForm(form)) {
+        return;
+      }
+
+      const btnEnviar = document.getElementById('btn-enviar');
+      const spinner = btnEnviar.querySelector('.spinner-border');
+      
+      // Estado de carga
+      btnEnviar.disabled = true;
+      spinner.classList.remove('d-none');
+
+      try {
+        const formData = {
+          skuId: document.getElementById('envioSkuId').value,
+          tipoInsumo: document.getElementById('envioTipoInsumo').value,
+          cantidad: parseInt(document.getElementById('envioCantidad').value)
+        };
+
+        const result = await API.enviarInsumos(formData);
+        
+        if (result.success) {
+          await Swal.fire({
+            icon: 'success',
+            title: '¡Envío Registrado!',
+            text: result.message,
+            timer: 2000,
+            showConfirmButton: false
+          });
+          
+          // Actualizar estado local
+          actualizarInventarioLocal(formData, result.data);
+          envioModal.hide();
+          
+          // Recargar transferencias
+          setTimeout(async () => {
+            await cargarDatosIniciales();
+          }, 1000);
+          
+        } else {
+          throw new Error(result.message || 'Error al procesar envío');
+        }
+        
+      } catch (error) {
+        console.error('Error en envío:', error);
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error.message || 'Ocurrió un error al registrar el envío.'
+        });
+      } finally {
+        btnEnviar.disabled = false;
+        spinner.classList.add('d-none');
+      }
+    }
+
+    function actualizarInventarioLocal(formData, newData) {
+      const { skuId, tipoInsumo } = formData;
+      
+      if (AppState.inventario[skuId]) {
+        AppState.inventario[skuId][tipoInsumo] = newData.cantidad;
+        
+        // Actualizar UI
+        Utils.updateElementText(`cantidad-${skuId}-${tipoInsumo}`, newData.cantidad, true);
+        
+        // Recalcular total
+        const item = AppState.inventario[skuId];
+        const total = (item.CAPUCHONES || 0) + (item.BASES || 0) + (item.TAPAS || 0);
+        Utils.updateElementText(`total-${skuId}`, total, true);
+
+        // Actualizar estado de botones de salida
+        actualizarEstadoBotonesSalida(skuId, total);
+      }
+    }
+
+    function actualizarEstadoBotonesSalida(skuId, total) {
+      const salidaBtn = document.querySelector(`button[data-sku-id="${skuId}"][data-tipo-movimiento="SALIDA"]`);
+      if (salidaBtn) {
+        if (total === 0) {
+          salidaBtn.setAttribute('disabled', 'disabled');
+        } else {
+          salidaBtn.removeAttribute('disabled');
+        }
+      }
+    }
+
+    async function confirmarRecibo(transferenciaId) {
+      const result = await Swal.fire({
+        title: '¿Confirmar recibo?',
+        text: 'Esta acción agregará los insumos a su inventario.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, confirmar',
+        cancelButtonText: 'Cancelar'
+      });
+
+      if (!result.isConfirmed) return;
+
+      try {
+        const responseData = await API.confirmarRecibo(transferenciaId);
+        
+        if (responseData.success) {
+          await Swal.fire({
+            icon: 'success',
+            title: '¡Recibo Confirmado!',
+            text: responseData.message,
+            timer: 1500,
+            showConfirmButton: false
+          });
+          
+          // Actualizar datos
+          await cargarDatosIniciales();
+          
+        } else {
+          throw new Error(responseData.message || 'Error al confirmar recibo');
+        }
+        
+      } catch (error) {
+        console.error('Error confirmando recibo:', error);
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error.message || 'Error al confirmar el recibo.'
+        });
+      }
+    }
+
+    function mostrarTransferenciasPendientes(skuId) {
+      const transferenciasTab = new bootstrap.Tab(document.getElementById('transferencias-tab'));
+      transferenciasTab.show();
+    }
+
+    function mostrarCarga(show) {
+      const loadingState = document.getElementById('loading-state');
+      if (loadingState) {
+        loadingState.style.display = show ? 'block' : 'none';
+      }
+    }
+
+    function mostrarError(mensaje) {
+      const errorState = document.getElementById('error-state');
+      const errorMessage = document.getElementById('error-message');
+      
+      if (errorState && errorMessage) {
+        errorMessage.textContent = mensaje;
+        errorState.style.display = 'block';
+      }
+    }
+
+    function ocultarError() {
+      const errorState = document.getElementById('error-state');
+      if (errorState) {
+        errorState.style.display = 'none';
+      }
+    }
+
+    async function recargarDatos() {
+      await cargarDatosIniciales();
+    }
+
+    // Función global para cerrar sesión (debe ser implementada)
+    function cerrarSesion() {
+      console.warn('Función cerrarSesion() no implementada');
+      // Implementar lógica de cierre de sesión
+    }
+
+    // Manejo de errores globales
+    window.addEventListener('error', function(event) {
+      console.error('Error global:', event.error);
+      mostrarError('Ha ocurrido un error inesperado');
+    });
+
+    window.addEventListener('unhandledrejection', function(event) {
+      console.error('Promise rechazada:', event.reason);
+      mostrarError('Error de conexión o procesamiento');
+    });
+  </script>
 </body>
 </html>

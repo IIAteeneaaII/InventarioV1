@@ -1487,7 +1487,7 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
           responsableId: userId,
         }
       });
-      console.log(`✅ Lote creado: ${lote.numero}`);
+      console.log(`✅ Lote creado: ${loteNumero}`);
     }
     
     const estadoEmpaqueId = estadoMap['EMPAQUE'] || estadoMap['RETEST'];
@@ -1914,6 +1914,7 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
 
   } catch (error) {
     console.error('❌ Error durante el procesamiento:', error);
+   
     throw error;
   }
 }
@@ -2152,48 +2153,34 @@ async function procesarOperacionesUnificadas(seriales, userId, estadoMap, fechaC
                 // Incrementar tiempo para cada fase (15-30 minutos entre cada una)
                 lastDateTime = new Date(lastDateTime.getTime() + (15 + Math.random() * 15) * 60000);
                 
-                // Obtener el estado ID correspondiente a la fase
-                let estadoId;
-                switch (fase) {
-                  case 'TEST_INICIAL': 
-                    estadoId = estadoTestInicialId; 
-                    break;
-                  case 'ENSAMBLE': 
-                    estadoId = estadoEnsambleId; 
-                    break;
-                  case 'RETEST': 
-                    estadoId = estadoRetestId; 
-                    break;
-                  case 'EMPAQUE': 
-                    estadoId = estadoEmpaqueId; 
-                    break;
-                  default: 
-                    estadoId = estadoRetestId;
+                // Si es EMPAQUE, usar la fecha del CSV
+                if (fase === 'EMPAQUE') {
+                  lastDateTime = fecha;
                 }
                 
                 // Crear registro para esta fase
                 await tx.registro.create({
                   data: {
-                    sn: sn,
-                    fase: fase,
+                    sn,
+                    fase,
                     estado: 'SN_OK',
-                    userId: userId,
+                    userId,
                     loteId: modem.loteId,
                     modemId: modem.id,
                     createdAt: lastDateTime
                   }
                 });
-                
-                // Actualizar el estado del módem
-                await tx.modem.update({
-                  where: { id: modem.id },
-                  data: {
-                    faseActual: fase,
-                    estadoActualId: estadoId,
-                    updatedAt: lastDateTime
-                  }
-                });
               }
+              
+              // Actualizar el módem
+              await tx.modem.update({
+                where: { id: modem.id },
+                data: {
+                  faseActual: 'EMPAQUE',
+                  estadoActualId: estadoEmpaque.id,
+                  updatedAt: fecha
+                }
+              });
             });
             
             // Agregar a resumen por lote
@@ -2326,6 +2313,187 @@ if (require.main === module) {
   menuPrincipal().catch(console.error);
 }
 
+// Función para procesar SNs con fechas (formato: SERIAL,FECHA)
+async function procesarSNsConFechas(filePath, userId, skuId) {
+  try {
+    console.log(`Procesando archivo: ${filePath}`);
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    const lines = fileContent.split('\n').filter(line => line.trim());
+    
+    // Contadores para estadísticas
+    let registrados = 0;
+    let actualizados = 0;
+    let errores = 0;
+    
+    for (const line of lines) {
+      try {
+        // Separar SN y fecha
+        const parts = line.split(',');
+        const sn = parts[0].trim();
+        // Extraer fecha si existe
+        const fechaStr = parts.length > 1 ? parts[1].trim() : null;
+        let fecha = null;
+        
+        if (fechaStr) {
+          // Intentar convertir la fecha
+          try {
+            const [day, month, year] = fechaStr.split('/').map(Number);
+            fecha = new Date(year, month - 1, day);
+            // Si la fecha no es válida, usar la fecha actual
+            if (isNaN(fecha.getTime())) {
+              fecha = new Date();
+            }
+          } catch (e) {
+            fecha = new Date();
+          }
+        } else {
+          fecha = new Date();
+        }
+        
+        if (!sn) continue; // Saltar líneas vacías
+        
+        // Verificar si el modem ya existe
+        const modemExistente = await prisma.modem.findUnique({
+          where: { sn }
+        });
+        
+        if (modemExistente) {
+          // Si existe y está en REGISTRO, actualizar a EMPAQUE con la fecha
+          if (modemExistente.faseActual === 'REGISTRO') {
+            const estadoEmpaque = await getEstadoWithCache('EMPAQUE');
+            
+            // Crear registros para fases intermedias
+            const fases = ['TEST_INICIAL', 'ENSAMBLE', 'RETEST', 'EMPAQUE'];
+            let lastDateTime = new Date(modemExistente.createdAt);
+            
+            await prisma.$transaction(async (tx) => {
+              for (const fase of fases) {
+                // Incrementar tiempo para cada fase
+                lastDateTime = new Date(lastDateTime.getTime() + (15 + Math.random() * 15) * 60000);
+                
+                // Si es EMPAQUE, usar la fecha del CSV
+                if (fase === 'EMPAQUE') {
+                  lastDateTime = fecha;
+                }
+                
+                // Crear registro para esta fase
+                await tx.registro.create({
+                  data: {
+                    sn,
+                    fase,
+                    estado: 'SN_OK',
+                    userId,
+                    loteId: modemExistente.loteId,
+                    modemId: modemExistente.id,
+                    createdAt: lastDateTime
+                  }
+                });
+              }
+              
+              // Actualizar el módem
+              await tx.modem.update({
+                where: { id: modemExistente.id },
+                data: {
+                  faseActual: 'EMPAQUE',
+                  estadoActualId: estadoEmpaque.id,
+                  updatedAt: fecha
+                }
+              });
+            });
+            
+            console.log(`Actualizado a EMPAQUE: ${sn}`);
+            actualizados++;
+          } else {
+            console.log(`Omitido (no está en REGISTRO): ${sn}`);
+          }
+        } else {
+          // Si no existe, crear nuevo registro directamente en EMPAQUE
+          const estadoRegistro = await getEstadoWithCache('REGISTRO');
+          const estadoEmpaque = await getEstadoWithCache('EMPAQUE');
+          
+          // Buscar un lote adecuado o crear uno nuevo
+          let lote = await prisma.lote.findFirst({
+            where: {
+              skuId,
+              estado: 'EN_PROCESO',
+              prioridad: 1 // Prioridad baja como se solicitó
+            }
+          });
+          
+          if (!lote) {
+            // Crear un nuevo lote con prioridad 1
+            const loteNumero = `NUEVOS_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
+            lote = await prisma.lote.create({
+              data: {
+                numero: loteNumero,
+                skuId,
+                tipoLote: 'ENTRADA',
+                esScrap: false,
+                estado: 'EN_PROCESO',
+                prioridad: 1,
+                responsableId: userId
+              }
+            });
+            console.log(`Lote creado: ${loteNumero}`);
+          }
+          
+          // Crear el módem directamente en estado EMPAQUE
+          const modem = await prisma.modem.create({
+            data: {
+              sn,
+              skuId,
+              faseActual: 'EMPAQUE',
+              estadoActualId: estadoEmpaque.id,
+              loteId: lote.id,
+              responsableId: userId,
+              createdAt: fecha,
+              updatedAt: fecha
+            }
+          });
+          
+          // Crear registros para todas las fases
+          const fases = ['REGISTRO', 'TEST_INICIAL', 'ENSAMBLE', 'RETEST', 'EMPAQUE'];
+          let lastDateTime = new Date(fecha);
+          lastDateTime.setHours(lastDateTime.getHours() - 8); // Empezar 8 horas antes
+          
+          for (const fase of fases) {
+            // Incrementar tiempo para cada fase
+            if (fase !== 'EMPAQUE') {
+              lastDateTime = new Date(lastDateTime.getTime() + (60 + Math.random() * 30) * 60000);
+            } else {
+              // Para EMPAQUE usar la fecha exacta del CSV
+              lastDateTime = fecha;
+            }
+            
+            await prisma.registro.create({
+              data: {
+                sn,
+                fase,
+                estado: 'SN_OK',
+                userId,
+                loteId: lote.id,
+                modemId: modem.id,
+                createdAt: lastDateTime
+              }
+            });
+          }
+          
+          console.log(`Registrado nuevo en EMPAQUE: ${sn}`);
+          registrados++;
+        }
+      } catch (error) {
+        console.error(`Error procesando línea: ${line}`, error);
+        errores++;
+      }
+    }
+    
+    return { registrados, actualizados, errores };
+  } catch (error) {
+    console.error('Error procesando archivo:', error);
+    throw error;
+  }
+}
+
 // Actualizar exports para incluir las nuevas funciones
 module.exports = { 
   importInteractive, 
@@ -2345,5 +2513,6 @@ module.exports = {
   procesarSNsEnLotes,
   getEstadoWithCache,
   createBatchRegistros,
-  borrarLoteCompleto
+  borrarLoteCompleto,
+  procesarSNsConFechas // Nueva función exportada
 };

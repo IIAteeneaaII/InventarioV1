@@ -2294,452 +2294,205 @@ async function procesarImportacionEntradaYSalida(
   filePath
 ) {
   try {
-    console.log('\n📥📦 INICIANDO IMPORTACIÓN DE ENTRADA Y SALIDA 📥📦');
+    console.log('⏳ Iniciando procesamiento...');
     
-    // Verificar si el lote ya existe o crearlo
-    let lote = await prisma.lote.findUnique({
-      where: { numero: loteNumero }
+    // Crear o actualizar el lote
+    console.log(`📦 Configurando lote: ${loteNumero}...`);
+    const lote = await prisma.lote.upsert({
+      where: { numero: loteNumero },
+      update: {
+        updatedAt: new Date()
+      },
+      create: {
+        numero: loteNumero,
+        skuId: skuId,
+        tipoLote: 'ENTRADA',
+        esScrap: false,
+        estado: 'EN_PROCESO',
+        prioridad: 2,
+        responsableId: userId,
+      },
     });
-
-    if (lote) {
-      console.log(`⚠️ El lote ${loteNumero} ya existe. Usando lote existente.`);
-    } else {
-      // Crear lote nuevo
-      lote = await prisma.lote.create({
-        data: {
-          numero: loteNumero,
-          skuId: skuId,
-          tipoLote: 'ENTRADA',
-          esScrap: false,
-          estado: 'EN_PROCESO',
-          prioridad: 2,
-          responsableId: userId,
-        }
-      });
-      console.log(`✅ Lote creado: ${loteNumero}`);
-    }
+    console.log(`✅ Lote configurado: ${lote.numero} (ID: ${lote.id})`);
     
-    const estadoEmpaqueId = estadoMap['EMPAQUE'] || estadoMap['RETEST'];
-    const estadoRegistroId = estadoMap['REGISTRO'];
-    const estadoTestInicialId = estadoMap['TEST_INICIAL'] || estadoMap['RETEST'];
-    const estadoEnsambleId = estadoMap['ENSAMBLE'] || estadoMap['RETEST'];
-    const estadoRetestId = estadoMap['RETEST'];
+    // Obtener IDs de estados
+    const estadoRegistroId = estadoMap['REGISTRO'] || Object.values(estadoMap)[0];
+    const estadoEmpaqueId = estadoMap['EMPAQUE'] || estadoMap['RETEST'] || Object.values(estadoMap)[0];
     
-    // Verificar que al menos tengamos RETEST como estado base
-    if (!estadoRetestId) {
-      console.error('❌ Estado RETEST no encontrado. Verificar configuración de estados.');
-      return;
-    }
-    
-    // Usar RETEST como fallback si otros estados no existen
-    const estadoFinal = estadoEmpaqueId || estadoRetestId;
-    const estadoInicial = estadoRegistroId || estadoRetestId;
-    
-    const batchSize = 50;
+    let creados = 0;
+    let actualizados = 0;
     let procesados = 0;
     let fallidos = 0;
-    let noEncontrados = 0;
+    const batchSize = 50;
     
-    // Procesar solo ENTRADAS
-    if (tipoImportacion === 'entradas') {
-      console.log(`\n📥 Procesando ${entradas.length} módems como ENTRADAS...`);
+    // Procesar según el tipo de importación
+    if (tipoImportacion === 'entradas' || tipoImportacion === 'completo' || tipoImportacion === 'proceso') {
+      // Filtrar entradas si es de tipo 'proceso'
+      const entradasAProcesar = tipoImportacion === 'proceso' 
+        ? entradas.filter(entrada => !relaciones.has(entrada.sn)) 
+        : entradas;
       
-      for (let i = 0; i < entradas.length; i += batchSize) {
-        const batch = entradas.slice(i, i + batchSize);
-        console.log(`   Lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(entradas.length/batchSize)}...`);
+      if (entradasAProcesar.length > 0) {
+        console.log(`🔄 Procesando ${entradasAProcesar.length} ENTRADAS...`);
         
-        for (const entrada of batch) {
-          try {
-            // Verificar si ya existe el módem
-            const existingModem = await prisma.modem.findUnique({
-              where: { sn: entrada.sn }
-            });
-            
-            if (!existingModem) {
-              // Crear el módem
-              await prisma.modem.create({
-                data: {
-                  sn: entrada.sn,
-                  skuId: skuId,
-                  estadoActualId: estadoInicial,
-                  faseActual: 'REGISTRO',
-                  loteId: lote.id,
-                  responsableId: userId,
-                  createdAt: entrada.fecha,
-                }
+        // Procesar en lotes
+        for (let i = 0; i < entradasAProcesar.length; i += batchSize) {
+          const batch = entradasAProcesar.slice(i, i + batchSize);
+          console.log(`   Lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(entradasAProcesar.length/batchSize)} - Procesando ${batch.length} módems...`);
+          
+          for (const item of batch) {
+            try {
+              const existingModem = await prisma.modem.findUnique({
+                where: { sn: item.sn }
               });
               
+              if (!existingModem) {
+                // Crear nuevo módem
+                const modem = await prisma.modem.create({
+                  data: {
+                    sn: item.sn,
+                    skuId: skuId,
+                    estadoActualId: estadoRegistroId,
+                    faseActual: 'REGISTRO',
+                    loteId: lote.id,
+                    responsableId: userId,
+                    createdAt: item.fecha,
+                    updatedAt: item.fecha,
+                  }
+                });
+                
+                // Crear registro de fase REGISTRO
+                await prisma.registro.create({
+                  data: {
+                    sn: item.sn,
+                    fase: 'REGISTRO',
+                    estado: 'SN_OK',
+                    userId: userId,
+                    loteId: lote.id,
+                    modemId: modem.id,
+                    createdAt: item.fecha,
+                  }
+                });
+                
+                creados++;
+              } else {
+                // Actualizar módem existente
+                await prisma.modem.update({
+                  where: { id: existingModem.id },
+                  data: {
+                    estadoActualId: estadoRegistroId,
+                    faseActual: 'REGISTRO',
+                    loteId: lote.id,
+                    updatedAt: item.fecha
+                  }
+                });
+                
+                actualizados++;
+              }
+              
               procesados++;
-            } else {
-              console.log(`   ⚠️ Módem ${entrada.sn} ya existe, omitiendo...`);
+            } catch (e) {
+              console.error(`   ❌ Error procesando entrada ${item.sn}: ${e.message}`);
+              fallidos++;
             }
-          } catch (error) {
-            fallidos++;
-            console.error(`   ❌ Error procesando entrada ${entrada.sn}: ${error.message}`);
           }
+          
+          const progreso = Math.min(i + batchSize, entradasAProcesar.length);
+          console.log(`   ✅ Progreso: ${progreso}/${entradasAProcesar.length} (${Math.round(progreso/entradasAProcesar.length*100)}%)`);
         }
       }
-    } 
-    // Procesar solo SALIDAS
-    else if (tipoImportacion === 'salidas') {
-      console.log(`\n📦 Procesando ${salidas.length} módems como SALIDAS...`);
-      noEncontrados = 0;
-      
-      for (let i = 0; i < salidas.length; i += batchSize) {
-        const batch = salidas.slice(i, i + batchSize);
-        console.log(`   Lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(salidas.length/batchSize)}...`);
+    }
+    
+    // Procesar salidas
+    if (tipoImportacion === 'salidas' || tipoImportacion === 'completo') {
+      if (salidas.length > 0) {
+        console.log(`\n🔄 Procesando ${salidas.length} SALIDAS...`);
         
-        for (const salida of batch) {
-          try {
-            // Buscar el módem por SN de entrada que corresponde a esta salida
-            const entradaSN = Array.from(relaciones.entries())
-              .find(([entrada, salidaSN]) => salidaSN === salida.sn)?.[0];
-
-            if (entradaSN) {
-              // Buscar el módem por SN de entrada
-              const modem = await prisma.modem.findUnique({
-                where: { sn: entradaSN }
+        // Procesar en lotes
+        for (let i = 0; i < salidas.length; i += batchSize) {
+          const batch = salidas.slice(i, i + batchSize);
+          console.log(`   Lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(salidas.length/batchSize)} - Procesando ${batch.length} módems...`);
+          
+          for (const item of batch) {
+            try {
+              const existingModem = await prisma.modem.findUnique({
+                where: { sn: item.sn }
               });
-
-              if (modem) {
-                // Usar transacción para asegurar que todas las operaciones se completen
-                await prisma.$transaction(async (tx) => {
-                  // Crear las fases intermedias necesarias antes de EMPAQUE
-                  const fases = ['TEST_INICIAL', 'ENSAMBLE', 'RETEST', 'EMPAQUE'];
-                  let lastDateTime = modem.createdAt || new Date();
-                  
-                  for (const fase of fases) {
-                    // Calcular fecha para esta fase (30 minutos después de la anterior)
-                    const fechaFase = new Date(lastDateTime.getTime() + 30 * 60000);
-                    
-                    // Si es la última fase (EMPAQUE), usar la fecha de salida real
-                    const fechaFinal = fase === 'EMPAQUE' ? salida.fecha : fechaFase;
-                    
-                    // Obtener el estado correspondiente para esta fase
-                    let estadoId;
-                    switch (fase) {
-                      case 'TEST_INICIAL': 
-                        estadoId = estadoTestInicialId; 
-                        break;
-                      case 'ENSAMBLE': 
-                        estadoId = estadoEnsambleId; 
-                        break;
-                      case 'RETEST': 
-                        estadoId = estadoRetestId; 
-                        break;
-                      case 'EMPAQUE': 
-                        estadoId = estadoEmpaqueId; 
-                        break;
-                      default: 
-                        estadoId = estadoRetestId;
-                    }
-                    
-                    // Actualizar módem a la fase actual
-                    await tx.modem.update({
-                      where: { id: modem.id },
-                      data: {
-                        faseActual: fase,
-                        estadoActualId: estadoId,
-                        updatedAt: fechaFinal,
-                      }
-                    });
-                    
-                    // Crear registro para esta fase
-                    await tx.registro.create({
-                      data: {
-                        sn: entradaSN,
-                        fase: fase,
-                        estado: 'SN_OK',
-                        userId: userId,
-                        loteId: lote.id,
-                        modemId: modem.id,
-                        createdAt: fechaFinal,
-                      }
-                    });
-                    
-                    lastDateTime = fechaFinal;
+              
+              if (existingModem) {
+                // Actualizar módem existente
+                await prisma.modem.update({
+                  where: { id: existingModem.id },
+                  data: {
+                    estadoActualId: estadoEmpaqueId,
+                    faseActual: 'EMPAQUE',
+                    updatedAt: item.fecha
+                  }
+                });
+                
+                // Crear registro de fase EMPAQUE
+                await prisma.registro.create({
+                  data: {
+                    sn: item.sn,
+                    fase: 'EMPAQUE',
+                    estado: 'SN_OK',
+                    userId: userId,
+                    loteId: existingModem.loteId,
+                    modemId: existingModem.id,
+                    createdAt: item.fecha,
                   }
                 });
                 
                 procesados++;
               } else {
-                noEncontrados++;
-                if (noEncontrados <= 5) {
-                  console.warn(`   ⚠️ No se encontró módem con SN de entrada: ${entradaSN} para salida: ${salida.sn}`);
-                }
+                console.warn(`   ⚠️ No se encontró el módem para salida: ${item.sn}`);
+                fallidos++;
               }
-            } else {
-              noEncontrados++;
-              if (noEncontrados <= 5) {
-                console.warn(`   ⚠️ No se encontró relación entrada→salida para: ${salida.sn}`);
-              }
-            }
-          } catch (error) {
-            fallidos++;
-            if (fallidos <= 5) {
-              console.error(`   ❌ Error procesando salida ${salida.sn}: ${error.message}`);
+            } catch (e) {
+              console.error(`   ❌ Error procesando salida ${item.sn}: ${e.message}`);
+              fallidos++;
             }
           }
-        }
-      }
-    } 
-    // PROCESO COMPLETO
-    else if (tipoImportacion === 'completo') {
-      console.log(`\n🔄 Procesando ${entradas.length} módems como ENTRADAS y ${salidas.length} módems como SALIDAS...`);
-      
-      // Primero procesar las entradas como REGISTRO
-      console.log('\n📥 Paso 1: Creando módems en REGISTRO...');
-      for (let i = 0; i < entradas.length; i += batchSize) {
-        const batch = entradas.slice(i, i + batchSize);
-        console.log(`   Lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(entradas.length/batchSize)}...`);
-        
-        for (const entrada of batch) {
-          try {
-            // Verificar si ya existe
-            const existingModem = await prisma.modem.findUnique({
-              where: { sn: entrada.sn }
-            });
-            
-            if (!existingModem) {
-              // Crear el módem
-              await prisma.modem.create({
-                data: {
-                  sn: entrada.sn,
-                  skuId: skuId,
-                  estadoActualId: estadoInicial,
-                  faseActual: 'REGISTRO',
-                  loteId: lote.id,
-                  responsableId: userId,
-                  createdAt: entrada.fecha,
-                }
-              });
-              
-              procesados++;
-            }
-          } catch (error) {
-            fallidos++;
-            console.error(`   ❌ Error procesando entrada ${entrada.sn}: ${error.message}`);
-          }
-        }
-      }
-
-      // Luego procesar las salidas y actualizar a EMPAQUE
-      console.log('\n📦 Paso 2: Actualizando módems a EMPAQUE...');
-      let empacados = 0;
-      noEncontrados = 0;
-      
-      for (let i = 0; i < salidas.length; i += batchSize) {
-        const batch = salidas.slice(i, i + batchSize);
-        console.log(`   Lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(salidas.length/batchSize)}...`);
-        
-        for (const salida of batch) {
-          try {
-            // Buscar el módem por SN de entrada que corresponde a esta salida
-            const entradaSN = Array.from(relaciones.entries())
-              .find(([entrada, salidaSN]) => salidaSN === salida.sn)?.[0];
-
-            if (entradaSN) {
-              // Buscar el módem por SN de entrada
-              const modem = await prisma.modem.findUnique({
-                where: { sn: entradaSN }
-              });
-
-              if (modem) {
-                // Verificar si el módem ya está en EMPAQUE o más allá
-                if (modem.faseActual === 'EMPAQUE' || modem.faseActual === 'SCRAP' || modem.faseActual === 'REPARACION') {
-                  console.log(`   ⚠️ Módem ${entradaSN} ya está en fase ${modem.faseActual}, saltando...`);
-                  empacados++; // Contar como procesado
-                  continue;
-                }
-
-                // Usar transacción para asegurar que todas las operaciones se completen
-                await prisma.$transaction(async (tx) => {
-                  // Definir el orden de las fases
-                  const faseOrder = ['REGISTRO', 'TEST_INICIAL', 'ENSAMBLE', 'RETEST', 'EMPAQUE'];
-                  const currentIndex = faseOrder.indexOf(modem.faseActual);
-                  const targetIndex = faseOrder.indexOf('EMPAQUE');
-                  
-                  // Solo procesar fases que estén después de la actual
-                  const fasesAProcesar = faseOrder.slice(Math.max(0, currentIndex + 1), targetIndex + 1);
-                  
-                  if (fasesAProcesar.length === 0) {
-                    console.log(`   ⚠️ Módem ${entradaSN} ya procesó todas las fases necesarias`);
-                    return;
-                  }
-                  
-                  let lastDateTime = modem.updatedAt || modem.createdAt || new Date();
-                  
-                  for (const fase of fasesAProcesar) {
-                    // Calcular fecha para esta fase (30 minutos después de la anterior)
-                    const fechaFase = new Date(lastDateTime.getTime() + 30 * 60000);
-                    
-                    // Si es la última fase (EMPAQUE), usar la fecha de salida real
-                    const fechaFinal = fase === 'EMPAQUE' ? salida.fecha : fechaFase;
-                    
-                    // Obtener el estado correspondiente para esta fase
-                    let estadoId;
-                    switch (fase) {
-                      case 'TEST_INICIAL': 
-                        estadoId = estadoTestInicialId; 
-                        break;
-                      case 'ENSAMBLE': 
-                        estadoId = estadoEnsambleId; 
-                        break;
-                      case 'RETEST': 
-                        estadoId = estadoRetestId; 
-                        break;
-                      case 'EMPAQUE': 
-                        estadoId = estadoEmpaqueId; 
-                        break;
-                      default: 
-                        estadoId = estadoRetestId;
-                    }
-                    
-                    // Actualizar módem a la fase actual
-                    await tx.modem.update({
-                      where: { id: modem.id },
-                      data: {
-                        faseActual: fase,
-                        estadoActualId: estadoId,
-                        updatedAt: fechaFinal,
-                      }
-                    });
-                    
-                    // Crear registro para esta fase
-                    await tx.registro.create({
-                      data: {
-                        sn: entradaSN,
-                        fase: fase,
-                        estado: 'SN_OK',
-                        userId: userId,
-                        loteId: lote.id,
-                        modemId: modem.id,
-                        createdAt: fechaFinal,
-                      }
-                    });
-                    
-                    lastDateTime = fechaFinal;
-                  }
-                });
-                
-                empacados++;
-              } else {
-                noEncontrados++;
-                if (noEncontrados <= 5) {
-                  console.warn(`   ⚠️ No se encontró módem con SN de entrada: ${entradaSN} para salida: ${salida.sn}`);
-                }
-              }
-            } else {
-              noEncontrados++;
-              if (noEncontrados <= 5) {
-                console.warn(`   ⚠️ No se encontró relación entrada→salida para: ${salida.sn}`);
-              }
-            }
-          } catch (error) {
-            fallidos++;
-            if (fallidos <= 5) {
-              console.error(`   ❌ Error procesando salida ${salida.sn}: ${error.message}`);
-            }
-          }
-        }
-      }
-      
-      console.log(`   📦 Módems actualizados a EMPAQUE: ${empacados}`);
-      console.log(`   ⚠️ Módems no encontrados: ${noEncontrados}`);
-    } else if (tipoImportacion === 'proceso') {
-      console.log('\n⚠️ Procesando solo módems EN PROCESO (entrada sin salida)...');
-      
-      const entradasSinSalida = entradas.filter(e => !relaciones.has(e.sn));
-      
-      for (let i = 0; i < entradasSinSalida.length; i += batchSize) {
-        const batch = entradasSinSalida.slice(i, i + batchSize);
-        console.log(`   Lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(entradasSinSalida.length/batchSize)}...`);
-        
-        for (const entrada of batch) {
-          try {
-            // Verificar si ya existe
-            const existingModem = await prisma.modem.findUnique({
-              where: { sn: entrada.sn }
-            });
-            
-            if (!existingModem) {
-              // Crear el módem
-              await prisma.modem.create({
-                data: {
-                  sn: entrada.sn,
-                  skuId: skuId,
-                  estadoActualId: estadoRegistroId,
-                  faseActual: 'REGISTRO',
-                  loteId: lote.id,
-                  responsableId: userId,
-                  createdAt: entrada.fecha,
-                }
-              });
-                            
-              procesados++;
-            }
-          } catch (error) {
-            fallidos++;
-            if (fallidos <= 5) {
-              console.error(`   ❌ Error procesando entrada ${entrada.sn}: ${error.message}`);
-            }
-          }
+          
+          const progreso = Math.min(i + batchSize, salidas.length);
+          console.log(`   ✅ Progreso: ${progreso}/${salidas.length} (${Math.round(progreso/salidas.length*100)}%)`);
         }
       }
     }
-
+    
+    // Encontrar módems que están en proceso (entrada sin salida correspondiente)
+    const entradasSinSalida = entradas.filter(entrada => !relaciones.has(entrada.sn));
+    console.log(`\n📊 Módems en proceso (entrada sin salida): ${entradasSinSalida.length}`);
+    
+    if (entradasSinSalida.length > 0) {
+      console.log(`   Muestra de SNs en proceso:`);
+      entradasSinSalida.slice(0, 10).forEach(item => {
+        console.log(`   - ${item.sn}`);
+      });
+    }
+    
     // Actualizar estado del lote
     await prisma.lote.update({
       where: { id: lote.id },
       data: { 
         estado: 'COMPLETADO',
         updatedAt: new Date()
-      }
-    });
-
-    console.log('\n🎉 ¡Procesamiento completado!');
-    console.log('📊 Resumen:');
-    console.log(`   ✅ Registros procesados: ${procesados}`);
-    console.log(`   ❌ Registros fallidos: ${fallidos}`);
-    console.log(`   📦 Lote: ${lote.numero}`);
-    console.log(`   🏁 Estado del lote: COMPLETADO`);
-
-    // Mostrar resumen por fase
-    const resumenFases = await prisma.modem.groupBy({
-      by: ['faseActual'],
-      where: { loteId: lote.id },
-      _count: { faseActual: true }
+      },
     });
     
-    console.log('\n📊 Resumen por fase:');
-    resumenFases.forEach(fase => {
-      console.log(`   ${fase.faseActual}: ${fase._count.faseActual} módems`);
-    });
-
-    // Mostrar estadísticas adicionales si es flujo completo
-    if (tipoImportacion === 'completo') {
-      const totalEnRegistro = await prisma.modem.count({
-        where: { 
-          loteId: lote.id,
-          faseActual: 'REGISTRO'
-        }
-      });
-      
-      const totalEnEmpaque = await prisma.modem.count({
-        where: { 
-          loteId: lote.id,
-          faseActual: 'EMPAQUE'
-        }
-      });
-
-      console.log('\n📈 Estadísticas del flujo:');
-      console.log(`   📥 Módems que quedaron en REGISTRO: ${totalEnRegistro}`);
-      console.log(`   📦 Módems que pasaron a EMPAQUE: ${totalEnEmpaque}`);
-      const total = totalEnRegistro + totalEnEmpaque;
-      if (total > 0) {
-        console.log(`   🔄 Porcentaje de completitud: ${Math.round((totalEnEmpaque / total) * 100)}%`);
-      }
+    console.log('\n🎉 ¡Importación completada exitosamente!');
+    console.log('📊 Resumen final:');
+    console.log(`   📦 Lote: ${lote.numero}`);
+    console.log(`   📱 Módems creados: ${creados}`);
+    console.log(`   🔄 Módems actualizados: ${actualizados}`);
+    console.log(`   ✅ Total procesados: ${procesados}`);
+    console.log(`   ❌ Fallos: ${fallidos}`);
+    console.log(`   🏁 Estado del lote: COMPLETADO`);
+    
+    if (tipoImportacion === 'proceso') {
+      console.log(`   ⚠️ Módems en proceso: ${entradasSinSalida.length}`);
     }
+    
   } catch (error) {
     console.error('❌ Error durante el procesamiento:', error);
     throw error;

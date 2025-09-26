@@ -1500,7 +1500,7 @@ async function procesarSNsConFechas(filePath, userId, skuId) {
     
     if (lines.length === 0) {
       console.log('⚠️ No se encontraron líneas válidas en el archivo');
-      return { actualizados: 0, nuevos: 0, errores: 0 };
+      return { actualizados: 0, nuevos: 0, yaExisten: 0, errores: 0 };
     }
     
     // Verificar si la primera línea es un encabezado (NS,FECHA)
@@ -1563,6 +1563,7 @@ async function procesarSNsConFechas(filePath, userId, skuId) {
     let actualizados = 0;
     let nuevos = 0;
     let errores = 0;
+    let yaExisten = 0;
     const snsProcesados = new Set(); // Evitar duplicados
     
     for (let i = dataStartIndex; i < lines.length; i += batchSize) {
@@ -1676,8 +1677,24 @@ async function procesarSNsConFechas(filePath, userId, skuId) {
             actualizados++;
             console.log(`   ✅ Actualizado: ${snRaw} -> ${modemFound.sn}`);
           } else if (!snsProcesados.has(sn)) {
-            // No encontrado en REGISTRO o ya procesado, crear nuevo módem
+            // No encontrado en REGISTRO o ya procesado, verificar si existe en la BD
             snsProcesados.add(sn);
+            
+            // Verificar si el módem ya existe en cualquier fase
+            const existingModem = await prisma.modem.findFirst({
+              where: {
+                OR: [
+                  { sn: sn },
+                  { sn: sn.substring(8) },  // Sin prefijo si lo tiene
+                ]
+              }
+            });
+            
+            if (existingModem) {
+              console.log(`   ⚠️ Módem ${sn} ya existe en fase ${existingModem.faseActual}, saltando creación...`);
+              yaExisten++;
+              continue; // Saltar creación
+            }
             
             // Obtener estado EMPAQUE
             const estadoEmpaque = await prisma.estado.findFirst({ where: { nombre: 'EMPAQUE' } });
@@ -1748,9 +1765,10 @@ async function procesarSNsConFechas(filePath, userId, skuId) {
     console.log('\n📊 Resumen final:');
     console.log(`   ✅ Módems actualizados de REGISTRO a EMPAQUE: ${actualizados}`);
     console.log(`   🆕 Módems nuevos creados en lote especial: ${nuevos}`);
+    console.log(`   ⚠️ Módems que ya existían (saltados): ${yaExisten}`);
     console.log(`   ❌ Errores: ${errores}`);
     
-    return { actualizados, nuevos, errores };
+    return { actualizados, nuevos, yaExisten, errores };
     
   } catch (error) {
     console.error('❌ Error en procesarSNsConFechas:', error);
@@ -1903,6 +1921,7 @@ async function procesarSNsConFechasInteractivo() {
     console.log('\n🎉 ¡Procesamiento completado!');
     console.log(`   ✅ Módems actualizados de REGISTRO a EMPAQUE: ${resultado.actualizados}`);
     console.log(`   🆕 Módems nuevos creados en lote especial: ${resultado.nuevos}`);
+    console.log(`   ⚠️ Módems que ya existían (saltados): ${resultado.yaExisten || 0}`);
     console.log(`   ❌ Errores: ${resultado.errores}`);
     
   } catch (error) {
@@ -2205,7 +2224,6 @@ async function procesarOperacionesUnificadas(seriales, userId, estadoMap, fechaC
               OR: [
                 { sn: sn.toUpperCase() },
                 { sn: sn.toUpperCase().substring(8) },  // Sin prefijo
-                { sn: "48575443" + sn.toUpperCase() }   // Con prefijo standard
               ],
               faseActual: 'REGISTRO'
             }

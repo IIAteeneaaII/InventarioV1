@@ -9,7 +9,6 @@ const prisma = new PrismaClient();
 // Importar funciones nuevas
 const {
   procesarSNsEnLotes,
-  getEstadoWithCache,
   createBatchRegistros,
   cambiarFaseDesdeCsv,
   procesarMultiplesCSV
@@ -1618,23 +1617,29 @@ async function procesarSNsConFechas(filePath, userId, skuId) {
             snsProcesados.add(modemFound.sn);
             
             // Obtener IDs de estados
-            const estadoTestInicial = await getEstadoWithCache('TEST_INICIAL');
-            const estadoEnsamble = await getEstadoWithCache('ENSAMBLE');
-            const estadoRetest = await getEstadoWithCache('RETEST');
-            const estadoEmpaque = await getEstadoWithCache('EMPAQUE');
+            const estadoTestInicial = await prisma.estado.findFirst({ where: { nombre: 'TEST_INICIAL' } });
+            const estadoEnsamble = await prisma.estado.findFirst({ where: { nombre: 'ENSAMBLE' } });
+            const estadoRetest = await prisma.estado.findFirst({ where: { nombre: 'RETEST' } });
+            const estadoEmpaque = await prisma.estado.findFirst({ where: { nombre: 'EMPAQUE' } });
             
             await prisma.$transaction(async (tx) => {
               // Crear registros de fases intermedias
               const fases = [
-                { nombre: 'TEST_INICIAL', estadoId: estadoTestInicial.id },
-                { nombre: 'ENSAMBLE', estadoId: estadoEnsamble.id },
-                { nombre: 'RETEST', estadoId: estadoRetest.id },
-                { nombre: 'EMPAQUE', estadoId: estadoEmpaque.id }
+                { nombre: 'TEST_INICIAL', estadoId: estadoTestInicial?.id },
+                { nombre: 'ENSAMBLE', estadoId: estadoEnsamble?.id },
+                { nombre: 'RETEST', estadoId: estadoRetest?.id },
+                { nombre: 'EMPAQUE', estadoId: estadoEmpaque?.id }
               ];
               
               let lastDateTime = new Date(modemFound.createdAt);
               
               for (const fase of fases) {
+                // Solo procesar si el estado existe
+                if (!fase.estadoId) {
+                  console.warn(`   ⚠️ Estado ${fase.nombre} no encontrado, saltando...`);
+                  continue;
+                }
+                
                 // Calcular tiempo para cada fase
                 if (fase.nombre !== 'EMPAQUE') {
                   lastDateTime = new Date(lastDateTime.getTime() + 60 * 60000); // 1 hora después
@@ -1675,7 +1680,14 @@ async function procesarSNsConFechas(filePath, userId, skuId) {
             snsProcesados.add(sn);
             
             // Obtener estado EMPAQUE
-            const estadoEmpaque = await getEstadoWithCache('EMPAQUE');
+            const estadoEmpaque = await prisma.estado.findFirst({ where: { nombre: 'EMPAQUE' } });
+            
+            // Verificar que el estado existe
+            if (!estadoEmpaque) {
+              console.warn(`   ⚠️ Estado EMPAQUE no encontrado, saltando creación de módem ${sn}`);
+              errores++;
+              continue;
+            }
             
             // Crear nuevo módem directamente en estado EMPAQUE
             const modem = await prisma.modem.create({
@@ -2757,7 +2769,6 @@ module.exports = {
   cambiarFaseDesdeCsv,
   procesarMultiplesCSV,
   procesarSNsEnLotes,
-  getEstadoWithCache,
   createBatchRegistros,
   borrarLoteCompleto,
   procesarSNsConFechas,

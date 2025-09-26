@@ -318,3 +318,30 @@ input[type="text"]:focus, select:focus{
     padding: 4px 6px;              /* ULTRA REDUCIDO para móviles */
   }
 }
+
+/* Botón Descargar Excel */
+#descargar-btn {
+  width: 100%; /* Asegura que tenga el mismo ancho que los otros botones */
+  padding: 12px;
+  background-color: #179288e5; /* Azul tipo Bootstrap */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px; /* Espacio entre el botón y el texto "Listo para escanear" */
+}
+
+#descargar-btn:hover {
+  background-color: #179288e5;
+}
+
+#descargar-btn i {
+  pointer-events: none; /* Evita que se haga clic en el icono por error */
+}
+

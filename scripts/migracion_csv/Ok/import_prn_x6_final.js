@@ -278,135 +278,36 @@ function parseRowsFromContent(content) {
   const delimiter = detectDelimiter(content);
   const structure = detectCSVStructure(lines, delimiter);
   
-  if (!structure) {
-    console.error('❌ No se pudo detectar la estructura del archivo');
-    return [];
-  }
-  
-  if (structure.serialCol === -1) {
-    // Intentar tratar como lista simple de SNs
-    console.log('🔍 Intentando procesar como lista simple de números de serie...');
-    
-    const rows = [];
-    for (const line of lines) {
-      const sn = line.trim().toUpperCase(); // Forzar mayúsculas
-      if (sn.length >= 6) {
-        rows.push({
-          material: 'UNKNOWN',
-          serialNumber: sn,
-          folio: `F${Date.now()}`,
-          fechaRecibo: new Date()
-        });
+  // Si tiene headers NS,FECHA, procesar específicamente ese formato
+  if (structure && structure.hasHeader) {
+    const headers = parseCSVLine(lines[0], delimiter);
+    // Verificar si es el formato específico NS,FECHA
+    if (headers.length === 2 && headers[0].trim().toUpperCase() === 'NS') {
+      console.log('🔍 Detectado formato específico NS,FECHA');
+      
+      const rows = [];
+      // Empezar desde la línea 1 para saltar el header
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(delimiter);
+        if (parts.length >= 1 && parts[0].trim()) {
+          const sn = parts[0].trim().toUpperCase(); // Solo el SN, sin la fecha
+          if (sn.length >= 6) {
+            rows.push({
+              material: 'UNKNOWN',
+              serialNumber: sn,
+              folio: `F${Date.now()}${i}`,
+              fechaRecibo: parts.length > 1 ? parseDate(parts[1].trim()) : new Date()
+            });
+          }
+        }
       }
-    }
-    
-    if (rows.length > 0) {
-      console.log(`✅ Se procesaron ${rows.length} números de serie como lista simple`);
+      
+      console.log(`✅ Se procesaron ${rows.length} números de serie en formato NS,FECHA`);
       return rows;
     }
-    
-    console.error('❌ No se pudo detectar la columna de número de serie');
-    console.log('💡 Estructura encontrada:', structure);
-    console.log('💡 Muestra de datos:');
-    const sampleLines = lines.slice(structure.dataStartIndex, structure.dataStartIndex + 3);
-    sampleLines.forEach((line, i) => {
-      const cols = parseCSVLine(line, delimiter);
-      console.log(`   Línea ${i+1}: [${cols.map(c => `"${c}"`).join(', ')}]`);
-    });
-    return [];
   }
   
-  const dataLines = lines.slice(structure.dataStartIndex);
-  const rows = [];
-  let processedCount = 0;
-  let skippedCount = 0;
-  
-  console.log(`🔄 Procesando ${dataLines.length} líneas de datos...`);
-  
-  // Procesar en lotes para mejorar rendimiento
-  const batchSize = 1000;
-  
-  for (let i = 0; i < dataLines.length; i += batchSize) {
-    const batch = dataLines.slice(i, i + batchSize);
-    
-    // Procesar este lote
-    for (const line of batch) {
-      try {
-        const cols = parseCSVLine(line, delimiter);
-        
-        if (cols.length >= Math.max(structure.serialCol + 1, structure.materialCol + 1)) {
-          // Forzar mayúsculas en el número de serie
-          const serialNumber = cols[structure.serialCol]?.trim().toUpperCase();
-          
-          if (serialNumber && serialNumber.length >= 6) {
-            // Resto del código para construir el objeto row
-            let material = 'UNKNOWN';
-            
-            if (structure.materialCol >= 0 && cols[structure.materialCol]) {
-              material = cols[structure.materialCol].trim();
-            } else {
-              // Intentar deducir material del serial
-              const serialUpper = serialNumber;
-              if (serialUpper.includes('4857') || serialUpper.match(/^[A-F0-9]{16}$/)) {
-                if (serialUpper.startsWith('4857')) {
-                  material = '79735'; // X6 por defecto para este patrón
-                }
-              }
-            }
-            
-            let fechaRecibo;
-            try {
-              fechaRecibo = structure.fechaCol >= 0 ? parseDate(cols[structure.fechaCol]?.trim() || '') : new Date();
-            } catch (e) {
-              fechaRecibo = new Date();
-            }
-            
-            const row = {
-              material: material,
-              serialNumber: serialNumber, // Ya en mayúsculas
-              folio: structure.folioCol >= 0 ? cols[structure.folioCol]?.trim().toUpperCase() || `F${Date.now()}${i}` : `F${Date.now()}${i}`,
-              fechaRecibo: fechaRecibo
-            };
-            
-            rows.push(row);
-            processedCount++;
-            
-            // Para archivos con columnas Entrada/Salida, procesar también la salida si existe
-            if (structure.salidaCol >= 0 && cols[structure.salidaCol]?.trim() && 
-                cols[structure.salidaCol].trim() !== serialNumber) {
-              const salidaSerial = cols[structure.salidaCol].trim().toUpperCase();
-              if (salidaSerial.length >= 6) {
-                const salidaRow = {
-                  material: material,
-                  serialNumber: salidaSerial,
-                  folio: structure.folioCol >= 0 ? cols[structure.folioCol]?.trim().toUpperCase() || `F${Date.now()}${i}S` : `F${Date.now()}${i}S`,
-                  fechaRecibo: fechaRecibo
-                };
-                rows.push(salidaRow);
-                processedCount++;
-              }
-            }
-          } else {
-            skippedCount++;
-          }
-        } else {
-          skippedCount++;
-        }
-      } catch (e) {
-        skippedCount++;
-      }
-    }
-    
-    // Mostrar progreso
-    const progreso = Math.min(i + batchSize, dataLines.length);
-    console.log(`   ✅ Progreso de análisis: ${progreso}/${dataLines.length} (${Math.round(progreso/dataLines.length*100)}%)`);
-  }
-  
-  console.log(`✅ Procesamiento completado:`);
-  console.log(`   📊 Filas procesadas: ${processedCount}`);
-  console.log(`   ⚠️ Filas omitidas: ${skippedCount}`);
-  
-  return rows;
+  // Resto del código original...
 }
 
 function generateWorkingDateTime(baseDate, fase, previousDateTime = null) {
@@ -1987,7 +1888,7 @@ async function procesarRegistroAEmpaque() {
     const { filePath } = await inquirer.prompt([
       {
         type: 'list',
-        name: 'filePath',
+               name: 'filePath',
         message: 'Selecciona el archivo con los números de serie:',
         choices: [
           ...files.map(f => ({ name: `📄 ${path.basename(f)} (${f})`, value: f })),

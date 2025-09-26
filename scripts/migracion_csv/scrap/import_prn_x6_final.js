@@ -278,6 +278,36 @@ function parseRowsFromContent(content) {
   const delimiter = detectDelimiter(content);
   const structure = detectCSVStructure(lines, delimiter);
   
+  // Si tiene headers NS,FECHA, procesar específicamente ese formato
+  if (structure && structure.hasHeader) {
+    const headers = parseCSVLine(lines[0], delimiter);
+    // Verificar si es el formato específico NS,FECHA
+    if (headers.length === 2 && headers[0].trim().toUpperCase() === 'NS') {
+      console.log('🔍 Detectado formato específico NS,FECHA');
+      
+      const rows = [];
+      // Empezar desde la línea 1 para saltar el header
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(delimiter);
+        if (parts.length >= 1 && parts[0].trim()) {
+          const sn = parts[0].trim().toUpperCase(); // Solo el SN, sin la fecha
+          if (sn.length >= 6) {
+            rows.push({
+              material: 'UNKNOWN',
+              serialNumber: sn,
+              folio: `F${Date.now()}${i}`,
+              fechaRecibo: parts.length > 1 ? parseDate(parts[1].trim()) : new Date()
+            });
+          }
+        }
+      }
+      
+      console.log(`✅ Se procesaron ${rows.length} números de serie en formato NS,FECHA`);
+      return rows;
+    }
+  }
+
+  
   if (!structure) {
     console.error('❌ No se pudo detectar la estructura del archivo');
     return [];
@@ -1412,7 +1442,7 @@ async function importarEntradaYSalida() {
     ]);
 
     console.log(`\n📋 Resumen de la importación:`);
-    console.log(`   - Archivo: ${path.basename(filePath)}`);
+    console.log(`   - Archivo: ${path.basename(selectedFile)}`);
     console.log(`   - Tipo: ${tipoImportacion}`);
     console.log(`   - SKU: ${skus.find(s => s.id === skuId)?.nombre}`);
     console.log(`   - Lote: ${loteNumero}`);
@@ -1846,7 +1876,7 @@ async function procesarImportacionEntradaYSalida(tipo, entradas, salidas, relaci
                   createdAt: entrada.fecha,
                 }
               });
-              
+                            
               procesados++;
             }
           } catch (error) {

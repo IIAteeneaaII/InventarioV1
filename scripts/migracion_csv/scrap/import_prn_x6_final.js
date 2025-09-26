@@ -1585,6 +1585,27 @@ async function procesarSNsConFechas(filePath, userId, skuId) {
           // Normalizar número de serie
           const sn = snRaw.toUpperCase();
           
+          // Verificación temprana: comprobar si el módem ya existe en la BD
+          const snVariants = [sn];
+          if (sn.startsWith('48575443')) {
+            snVariants.push(sn.substring(8)); // Sin prefijo
+          } else {
+            snVariants.push('48575443' + sn); // Con prefijo
+          }
+          
+          // Verificar si ya existe en cualquier parte
+          const globalExistingModem = await prisma.modem.findFirst({
+            where: { sn: { in: snVariants } }
+          });
+          
+          if (globalExistingModem && !snsProcesados.has(globalExistingModem.sn)) {
+            if (globalExistingModem.faseActual !== 'REGISTRO') {
+              console.log(`   ⚠️ Módem ${sn} ya existe como ${globalExistingModem.sn} en fase ${globalExistingModem.faseActual}, saltando...`);
+              yaExisten++;
+              continue; // Saltar este módem completamente
+            }
+          }
+          
           // Parsear la fecha
           let fecha;
           try {
@@ -1606,7 +1627,7 @@ async function procesarSNsConFechas(filePath, userId, skuId) {
           let modemFound = modemMap[sn];
           
           // Si no se encuentra con el SN completo, buscar variaciones
-          if (!modemFound && sn.startsWith('46485454')) {
+          if (!modemFound && sn.startsWith('48575443')) {
             const snSinPrefijo = sn.substring(8);
             modemFound = prefixMap[snSinPrefijo];
           } else if (!modemFound) {
@@ -1677,24 +1698,8 @@ async function procesarSNsConFechas(filePath, userId, skuId) {
             actualizados++;
             console.log(`   ✅ Actualizado: ${snRaw} -> ${modemFound.sn}`);
           } else if (!snsProcesados.has(sn)) {
-            // No encontrado en REGISTRO o ya procesado, verificar si existe en la BD
+            // No encontrado en REGISTRO, crear nuevo módem
             snsProcesados.add(sn);
-            
-            // Verificar si el módem ya existe en cualquier fase
-            const existingModem = await prisma.modem.findFirst({
-              where: {
-                OR: [
-                  { sn: sn },
-                  { sn: sn.substring(8) },  // Sin prefijo si lo tiene
-                ]
-              }
-            });
-            
-            if (existingModem) {
-              console.log(`   ⚠️ Módem ${sn} ya existe en fase ${existingModem.faseActual}, saltando creación...`);
-              yaExisten++;
-              continue; // Saltar creación
-            }
             
             // Obtener estado EMPAQUE
             const estadoEmpaque = await prisma.estado.findFirst({ where: { nombre: 'EMPAQUE' } });
